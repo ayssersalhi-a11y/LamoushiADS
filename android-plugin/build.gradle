@@ -36,9 +36,6 @@ repositories {
 }
 
 dependencies {
-    // مكتبة غودوت للبناء فقط (لا تُضمن داخل الـ aar)
     compileOnly "org.godotengine:godot:4.2.0.stable"
-    
-    // مكتبة Adsterra الفعلية
-    implementation 'com.github.adsterra:adsterra-android-sdk:1.0.1' 
+    // لا نحتاج لأي مكتبات خارجية الآن!
 }
