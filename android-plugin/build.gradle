@@ -33,4 +33,7 @@ repositories {
 
 dependencies {
     compileOnly "org.godotengine:godot:4.2.0.stable"
+    
+    // إضافة مكتبة Adsterra (هذه النسخة العامة والأكثر استقراراً)
+    implementation 'com.github.adsterra:adsterra-android-sdk:1.0.1' 
 }
