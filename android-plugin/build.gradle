@@ -4,7 +4,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        // هذا هو السطر الذي كان ينقصك ليعرف Gradle ما هو 'com.android.library'
+        // هذا السطر ضروري لتعريف نظام بناء الأندرويد
         classpath 'com.android.tools.build:gradle:8.2.0'
     }
 }
@@ -12,6 +12,7 @@ buildscript {
 apply plugin: 'com.android.library'
 
 android {
+    // الـ namespace هنا يغنينا عن كتابته في الـ Manifest ويمنع تضارب الأسماء
     namespace 'com.lamoushi.ads'
     compileSdk 33
 
@@ -28,12 +29,16 @@ android {
 repositories {
     google()
     mavenCentral()
+    // --- الإضافة الضرورية هنا ---
+    maven { url 'https://jitpack.io' } 
+    // ---------------------------
     maven { url "https://plugins.gradle.org/m2/" }
 }
 
 dependencies {
+    // مكتبة غودوت للبناء فقط (لا تُضمن داخل الـ aar)
     compileOnly "org.godotengine:godot:4.2.0.stable"
     
-    // إضافة مكتبة Adsterra (هذه النسخة العامة والأكثر استقراراً)
+    // مكتبة Adsterra الفعلية
     implementation 'com.github.adsterra:adsterra-android-sdk:1.0.1' 
 }
