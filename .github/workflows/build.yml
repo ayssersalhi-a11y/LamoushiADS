@@ -25,14 +25,18 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease
 
-      # خطوة ذكية: إنشاء ملف الـ .gdap تلقائياً
+      # خطوة إنشاء ملف الـ .gdap مع ضمان تطابق الأسماء
       - name: Create GDAP File
         run: |
+          # أولاً: إعادة تسمية ملف الـ aar الناتج ليتطابق مع ما يريده غودوت
+          mv android-plugin/build/outputs/aar/android-plugin-release.aar android-plugin/build/outputs/aar/LamoushiAds-release.aar
+          
+          # ثانياً: إنشاء ملف الـ .gdap بالاسم الصحيح
           cat <<EOF > android-plugin/build/outputs/aar/LamoushiAds.gdap
           [config]
           name="LamoushiAds"
           binary_type="local"
-          binary="GodotAndroidPlugin-release.aar"
+          binary="LamoushiAds-release.aar"
 
           [dependencies]
           local=[]
@@ -45,5 +49,5 @@ jobs:
         with:
           name: LamoushiAds_Plugin_Ready
           path: |
-            android-plugin/build/outputs/aar/*.aar
-            android-plugin/build/outputs/aar/*.gdap
+            android-plugin/build/outputs/aar/LamoushiAds-release.aar
+            android-plugin/build/outputs/aar/LamoushiAds.gdap
