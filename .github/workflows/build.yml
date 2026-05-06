@@ -14,7 +14,6 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # قمنا بتحديد إصدار 8.5 لضمان التوافق مع مكتبات أندرويد وغودوت
       - name: Generate Gradle Wrapper
         run: |
           cd android-plugin
@@ -26,8 +25,25 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease
 
+      # خطوة ذكية: إنشاء ملف الـ .gdap تلقائياً
+      - name: Create GDAP File
+        run: |
+          cat <<EOF > android-plugin/build/outputs/aar/LamoushiAds.gdap
+          [config]
+          name="LamoushiAds"
+          binary_type="local"
+          binary="GodotAndroidPlugin-release.aar"
+
+          [dependencies]
+          local=[]
+          remote=[]
+          custom_rules=[]
+          EOF
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GodotAndroidPlugin
-          path: android-plugin/build/outputs/aar/*.aar
+          name: LamoushiAds_Plugin_Ready
+          path: |
+            android-plugin/build/outputs/aar/*.aar
+            android-plugin/build/outputs/aar/*.gdap
