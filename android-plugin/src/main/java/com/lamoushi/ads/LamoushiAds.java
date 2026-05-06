@@ -3,13 +3,16 @@ package com.lamoushi.ads;
 import android.app.Activity;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import org.godotengine.godot.Godot;
 import org.godotengine.godot.plugin.GodotPlugin;
 import org.godotengine.godot.plugin.UsedByGodot;
+import com.adsterra.sdk.BannerAd; // استيراد مكتبة ادستيرا
 
 public class LamoushiAds extends GodotPlugin {
     private Activity activity;
+    private BannerAd bannerAd;
 
     public LamoushiAds(Godot godot) {
         super(godot);
@@ -22,11 +25,22 @@ public class LamoushiAds extends GodotPlugin {
     }
 
     @UsedByGodot
-    public void showBanner(final String zoneId) {
+    public void loadBanner(final String zoneId) {
         activity.runOnUiThread(() -> {
-            // هنا سنضع كود Adsterra لاحقاً بمجرد دمج الـ SDK
-            // حالياً هذا هيكل الإضافة لضمان نجاح البناء
-            android.util.Log.d("LamoushiAds", "Banner requested for Top with Zone: " + zoneId);
+            if (bannerAd != null) return;
+
+            bannerAd = new BannerAd(activity);
+            bannerAd.setPlacementId(zoneId);
+            
+            // ضبط مكان الإعلان في الأعلى (Top)
+            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            );
+            params.gravity = Gravity.TOP; 
+
+            activity.addContentView(bannerAd, params);
+            bannerAd.loadAd();
         });
     }
 }
