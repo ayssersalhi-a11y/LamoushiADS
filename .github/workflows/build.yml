@@ -25,24 +25,24 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease
 
-      # خطوة إنشاء ملف الـ .gdap مع ضمان تطابق الأسماء
+      # تصحيح خطوة إنشاء ملف الـ .gdap ليتوافق مع اسم الـ binary
       - name: Create GDAP File
         run: |
-          # أولاً: إعادة تسمية ملف الـ aar الناتج ليتطابق مع ما يريده غودوت
-          mv android-plugin/build/outputs/aar/android-plugin-release.aar android-plugin/build/outputs/aar/LamoushiAds-release.aar
+          # أولاً سنعيد تسمية ملف الـ aar ليكون اسماً ثابتاً وسهلاً
+          mv android-plugin/build/outputs/aar/*.aar android-plugin/build/outputs/aar/LamoushiAds-release.aar
           
-          # ثانياً: إنشاء ملف الـ .gdap بالاسم الصحيح
+          # إنشاء الملف بالبيانات الصحيحة تماماً
           cat <<EOF > android-plugin/build/outputs/aar/LamoushiAds.gdap
-          [config]
-          name="LamoushiAds"
-          binary_type="local"
-          binary="LamoushiAds-release.aar"
+[config]
+name="LamoushiAds"
+binary_type="local"
+binary="LamoushiAds-release.aar"
 
-          [dependencies]
-          local=[]
-          remote=[]
-          custom_rules=[]
-          EOF
+[dependencies]
+local=[]
+remote=[]
+custom_rules=[]
+EOF
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
