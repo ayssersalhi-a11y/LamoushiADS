@@ -4,7 +4,6 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        // هذا السطر ضروري لتعريف نظام بناء الأندرويد
         classpath 'com.android.tools.build:gradle:8.2.0'
     }
 }
@@ -12,7 +11,6 @@ buildscript {
 apply plugin: 'com.android.library'
 
 android {
-    // الـ namespace هنا يغنينا عن كتابته في الـ Manifest ويمنع تضارب الأسماء
     namespace 'com.lamoushi.ads'
     compileSdk 33
 
@@ -24,18 +22,22 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
+    // --- هذا هو السطر السحري الذي سيحل مشكلة غيت هيب ---
+    // يفرض على الملف الناتج أن يكون اسمه LamoushiAds-release.aar
+    base {
+        archivesName = "LamoushiAds"
+    }
+    // -----------------------------------------------
 }
 
 repositories {
     google()
     mavenCentral()
-    // --- الإضافة الضرورية هنا ---
     maven { url 'https://jitpack.io' } 
-    // ---------------------------
     maven { url "https://plugins.gradle.org/m2/" }
 }
 
 dependencies {
     compileOnly "org.godotengine:godot:4.2.0.stable"
-    // لا نحتاج لأي مكتبات خارجية الآن!
 }
