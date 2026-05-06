@@ -1,1 +1,29 @@
+apply plugin: 'com.android.library'
 
+android {
+    compileSdk 33
+
+    defaultConfig {
+        minSdk 21
+        targetSdk 33
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+    // هذا المستودع مهم لجلب مكتبات غودوت
+    maven { url "https://plugins.gradle.org/m2/" }
+}
+
+dependencies {
+    // جلب مكتبة غودوت الأساسية للبناء (تأكد من توافق الإصدار)
+    compileOnly "org.godotengine:godot:4.2.0.stable"
+    
+    // هنا سنضيف مكتبة Adsterra لاحقاً عندما ننتقل لكود الإعلانات الفعلي
+}
