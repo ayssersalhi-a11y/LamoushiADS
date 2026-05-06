@@ -1,18 +1,19 @@
 package com.lamoushi.ads;
 
 import android.app.Activity;
+import android.graphics.Color;
 import android.view.Gravity;
-import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import org.godotengine.godot.Godot;
 import org.godotengine.godot.plugin.GodotPlugin;
 import org.godotengine.godot.plugin.UsedByGodot;
-import com.adsterra.sdk.BannerAd; // استيراد مكتبة ادستيرا
 
 public class LamoushiAds extends GodotPlugin {
     private Activity activity;
-    private BannerAd bannerAd;
+    private WebView webView;
 
     public LamoushiAds(Godot godot) {
         super(godot);
@@ -27,20 +28,33 @@ public class LamoushiAds extends GodotPlugin {
     @UsedByGodot
     public void loadBanner(final String zoneId) {
         activity.runOnUiThread(() -> {
-            if (bannerAd != null) return;
+            if (webView != null) return;
 
-            bannerAd = new BannerAd(activity);
-            bannerAd.setPlacementId(zoneId);
+            webView = new WebView(activity);
             
-            // ضبط مكان الإعلان في الأعلى (Top)
+            // إعدادات المتصفح ليعمل الإعلان بشكل صحيح
+            webView.getSettings().setJavaScriptEnabled(true);
+            webView.setBackgroundColor(Color.TRANSPARENT); // جعل الخلفية شفافة
+            webView.setWebViewClient(new WebViewClient());
+
+            // كود HTML لعرض إعلان Adsterra باستخدام الـ Zone ID
+            String html = "<html><body style='margin:0;padding:0;display:flex;justify-content:center;'>"
+                        + "<script type='text/javascript'>"
+                        + "atOptions = { 'key' : '" + zoneId + "', 'format' : 'iframe', 'height' : 50, 'width' : 320, 'params' : {} };"
+                        + "</script>"
+                        + "<script type='text/javascript' src='//www.highperformanceformat.com/" + zoneId + "/invoke.js'></script>"
+                        + "</body></html>";
+
+            webView.loadDataWithBaseURL("https://www.highperformanceformat.com", html, "text/html", "UTF-8", null);
+
+            // تحديد مكان الإعلان (في الأعلى)
             FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
+                150 // ارتفاع تقريبي ليناسب البانر
             );
-            params.gravity = Gravity.TOP; 
+            params.gravity = Gravity.TOP;
 
-            activity.addContentView(bannerAd, params);
-            bannerAd.loadAd();
+            activity.addContentView(webView, params);
         });
     }
 }
