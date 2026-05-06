@@ -25,11 +25,8 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease
 
-      # نستخدم النجمة هنا لضمان العثور على الملف وتغيير اسمه فوراً
-      - name: Rename AAR for Consistency
-        run: |
-          mv android-plugin/build/outputs/aar/*.aar android-plugin/build/outputs/aar/LamoushiAds-release.aar
-
+      # حذفنا خطوة الـ mv لأن Gradle الآن ينتج الاسم الصحيح تلقائياً
+      
       - name: Create GDAP File
         run: |
           cat <<EOF > android-plugin/build/outputs/aar/LamoushiAds.gdap
