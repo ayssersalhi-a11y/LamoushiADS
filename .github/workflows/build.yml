@@ -14,11 +14,11 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # هذه الخطوة ستقوم بتوليد ملفات Gradle الناقصة
+      # قمنا بتحديد إصدار 8.5 لضمان التوافق مع مكتبات أندرويد وغودوت
       - name: Generate Gradle Wrapper
         run: |
           cd android-plugin
-          gradle wrapper
+          gradle wrapper --gradle-version 8.5
 
       - name: Build with Gradle
         run: |
