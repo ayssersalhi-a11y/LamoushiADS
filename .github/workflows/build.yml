@@ -14,22 +14,30 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Generate Gradle Wrapper
+      - name: Setup Gradle Wrapper
         run: |
           cd android-plugin
-          gradle wrapper --gradle-version 8.5
+          # تثبيت Gradle مباشرة بدون الاعتماد على النظام
+          wget -q https://services.gradle.org/distributions/gradle-8.5-bin.zip
+          unzip -q gradle-8.5-bin.zip
+          ./gradle-8.5/bin/gradle wrapper --gradle-version 8.5
+          chmod +x gradlew
 
       - name: Build with Gradle
         run: |
           cd android-plugin
-          chmod +x gradlew
           ./gradlew assembleRelease
 
-      # حذفنا خطوة الـ mv لأن Gradle الآن ينتج الاسم الصحيح تلقائياً
-      
-      - name: Create GDAP File
+      - name: Prepare Plugin Folder
         run: |
-          cat <<EOF > android-plugin/build/outputs/aar/LamoushiAds.gdap
+          mkdir -p plugin-output/android/plugins/LamoushiAds
+
+          # نسخ الـ AAR
+          cp android-plugin/build/outputs/aar/LamoushiAds-release.aar \
+             plugin-output/android/plugins/LamoushiAds/
+
+          # إنشاء ملف الـ plugin الصحيح لـ Godot 4
+          cat > plugin-output/android/plugins/LamoushiAds/LamoushiAds.gdap << 'EOF'
           [config]
           name="LamoushiAds"
           binary_type="local"
@@ -45,6 +53,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: LamoushiAds_Plugin_Ready
-          path: |
-            android-plugin/build/outputs/aar/LamoushiAds-release.aar
-            android-plugin/build/outputs/aar/LamoushiAds.gdap
+          path: plugin-output/
