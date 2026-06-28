@@ -4,7 +4,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.2.0'
+        classpath 'com.android.tools.build:gradle:8.5.0'
     }
 }
 
@@ -12,7 +12,7 @@ apply plugin: 'com.android.library'
 
 android {
     namespace 'com.lamoushi.ads'
-    compileSdk 33
+    compileSdk 34
 
     defaultConfig {
         minSdk 21
@@ -23,21 +23,18 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    // --- هذا هو السطر السحري الذي سيحل مشكلة غيت هيب ---
-    // يفرض على الملف الناتج أن يكون اسمه LamoushiAds-release.aar
     base {
         archivesName = "LamoushiAds"
     }
-    // -----------------------------------------------
 }
 
 repositories {
     google()
     mavenCentral()
-    maven { url 'https://jitpack.io' } 
+    maven { url 'https://jitpack.io' }
     maven { url "https://plugins.gradle.org/m2/" }
 }
 
 dependencies {
-    compileOnly "org.godotengine:godot:4.2.0.stable"
+    compileOnly "org.godotengine:godot:4.3.0.stable"
 }
