@@ -17,10 +17,9 @@ jobs:
       - name: Setup Gradle Wrapper
         run: |
           cd android-plugin
-          # تثبيت Gradle مباشرة بدون الاعتماد على النظام
-          wget -q https://services.gradle.org/distributions/gradle-8.5-bin.zip
-          unzip -q gradle-8.5-bin.zip
-          ./gradle-8.5/bin/gradle wrapper --gradle-version 8.5
+          wget -q https://services.gradle.org/distributions/gradle-8.7-bin.zip
+          unzip -q gradle-8.7-bin.zip
+          ./gradle-8.7/bin/gradle wrapper --gradle-version 8.7
           chmod +x gradlew
 
       - name: Build with Gradle
@@ -32,11 +31,9 @@ jobs:
         run: |
           mkdir -p plugin-output/android/plugins/LamoushiAds
 
-          # نسخ الـ AAR
           cp android-plugin/build/outputs/aar/LamoushiAds-release.aar \
              plugin-output/android/plugins/LamoushiAds/
 
-          # إنشاء ملف الـ plugin الصحيح لـ Godot 4
           cat > plugin-output/android/plugins/LamoushiAds/LamoushiAds.gdap << 'EOF'
           [config]
           name="LamoushiAds"
