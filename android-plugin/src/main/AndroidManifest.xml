@@ -1,16 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- صلاحية الإنترنت ضرورية لتحميل الإعلانات -->
+    <!-- صلاحيات الاتصال بالشبكة لتحميل إعلانات WebView -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application>
-        <!-- السماح لـ WebView بتحميل محتوى HTTP و HTTPS -->
-        <activity
-            android:name="com.google.android.gms.ads.AdActivity"
-            android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|uiMode|screenSize|smallestScreenSize"
-            android:exported="false" />
+        <!-- لا تحتاج لإضافة أي Activity هنا طالما أنك تعرض الـ WebView داخل النشاط الرئيسي لـ Godot -->
     </application>
 
 </manifest>
