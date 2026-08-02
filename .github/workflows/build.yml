@@ -32,13 +32,13 @@ jobs:
           mkdir -p plugin-output/android/plugins
 
           cp android-plugin/build/outputs/aar/LamoushiAds-release.aar \
-             plugin-output/android/plugins/
+             plugin-output/android/plugins/ads.aar
 
-          cat > plugin-output/android/plugins/LamoushiAds.gdap << 'EOF'
+          cat > plugin-output/android/plugins/ads.gdap << 'EOF'
           [config]
           name="LamoushiAds"
           binary_type="local"
-          binary="LamoushiAds-release.aar"
+          binary="ads.aar"
 
           [dependencies]
           local=[]
