@@ -29,12 +29,12 @@ jobs:
 
       - name: Prepare Plugin Folder
         run: |
-          mkdir -p plugin-output/android/plugins/LamoushiAds
+          mkdir -p plugin-output/android/plugins
 
           cp android-plugin/build/outputs/aar/LamoushiAds-release.aar \
-             plugin-output/android/plugins/LamoushiAds/
+             plugin-output/android/plugins/
 
-          cat > plugin-output/android/plugins/LamoushiAds/LamoushiAds.gdap << 'EOF'
+          cat > plugin-output/android/plugins/LamoushiAds.gdap << 'EOF'
           [config]
           name="LamoushiAds"
           binary_type="local"
