@@ -36,5 +36,5 @@ repositories {
 }
 
 dependencies {
-    compileOnly "org.godotengine:godot:4.3.0.stable"
+    compileOnly "org.godotengine:godot:4.7.0.stable"
 }
