@@ -1,5 +1,11 @@
 name: Build Android Plugin
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -51,3 +57,16 @@ jobs:
         with:
           name: LamoushiAds_Plugin_Ready
           path: plugin-output/
+
+      - name: Set version tag
+        if: github.event_name == 'push'
+        id: tag
+        run: echo "tag=v1.0.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+      - name: Create Release and Upload
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
+          files: plugin-output/android/plugins/ads.aar
