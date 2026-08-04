@@ -1,14 +1,5 @@
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.3.0'
-    }
-}
-
 apply plugin: 'com.android.library'
+apply plugin: 'maven-publish'
 
 android {
     namespace 'com.lamoushi.ads'
@@ -28,13 +19,15 @@ android {
     }
 }
 
-repositories {
-    google()
-    mavenCentral()
-    maven { url 'https://jitpack.io' }
-    maven { url "https://plugins.gradle.org/m2/" }
-}
-
-dependencies {
-    compileOnly "org.godotengine:godot:4.7.0.stable"
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+                groupId = 'com.github.ayssersalhi-a11y'
+                artifactId = 'LamoushiADS'
+                version = project.version ?: '1.0.0'
+            }
+        }
+    }
 }
