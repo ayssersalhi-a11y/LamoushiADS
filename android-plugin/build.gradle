@@ -1,3 +1,13 @@
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.3.0'
+    }
+}
+
 apply plugin: 'com.android.library'
 apply plugin: 'maven-publish'
 
@@ -17,6 +27,23 @@ android {
     base {
         archivesName = "LamoushiAds"
     }
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+    maven { url 'https://jitpack.io' }
+    maven { url "https://plugins.gradle.org/m2/" }
+}
+
+dependencies {
+    compileOnly "org.godotengine:godot:4.7.0.stable"
 }
 
 afterEvaluate {
