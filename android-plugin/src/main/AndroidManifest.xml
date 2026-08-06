@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- صلاحيات الاتصال بالشبكة لتحميل إعلانات WebView -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application>
-        <!-- لا تحتاج لإضافة أي Activity هنا طالما أنك تعرض الـ WebView داخل النشاط الرئيسي لـ Godot -->
+        <meta-data
+            android:name="org.godotengine.plugin.v2.LamoushiAds"
+            android:value="com.lamoushi.ads.LamoushiAds" />
     </application>
 
 </manifest>
