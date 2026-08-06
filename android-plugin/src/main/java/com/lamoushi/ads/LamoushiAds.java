@@ -5,6 +5,7 @@ import android.graphics.Color;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.CookieManager;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.WebChromeClient;
@@ -65,16 +66,25 @@ public class LamoushiAds extends GodotPlugin {
             webView.getSettings().setDomStorageEnabled(true);
             webView.setBackgroundColor(Color.TRANSPARENT);
 
-            // التقاط رسائل console.log من JavaScript
+            // ==== تفعيل الكوكيز (ضروري جداً لتسليم إعلان Adsterra الفعلي) ====
+            CookieManager cookieManager = CookieManager.getInstance();
+            cookieManager.setAcceptCookie(true);
+            cookieManager.setAcceptThirdPartyCookies(webView, true);
+            emitSignal("ad_debug", "تم تفعيل الكوكيز (أولى + طرف ثالث) ✅");
+            // ==================================================================
+
+            // التقاط رسائل console.log من JavaScript (بما فيها سكربت invoke.js نفسه)
             webView.setWebChromeClient(new WebChromeClient() {
                 @Override
                 public boolean onConsoleMessage(ConsoleMessage cm) {
-                    emitSignal("ad_debug", "JS Console: " + cm.message() + " (line " + cm.lineNumber() + ")");
+                    String level = cm.messageLevel() != null ? cm.messageLevel().toString() : "UNKNOWN";
+                    emitSignal("ad_debug", "JS Console [" + level + "]: " + cm.message()
+                            + " (المصدر: " + cm.sourceId() + ", السطر: " + cm.lineNumber() + ")");
                     return true;
                 }
             });
 
-            // التقاط أخطاء تحميل الموارد (مثل فشل تحميل invoke.js)
+            // التقاط أخطاء تحميل الموارد + تفاصيل إضافية لكل طلب يمر عبر الـ WebView
             webView.setWebViewClient(new WebViewClient() {
                 @Override
                 public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
@@ -82,8 +92,28 @@ public class LamoushiAds extends GodotPlugin {
                 }
 
                 @Override
+                public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                    emitSignal("ad_debug", "بدأ تحميل الصفحة: " + url);
+                }
+
+                @Override
                 public void onPageFinished(WebView view, String url) {
                     emitSignal("ad_debug", "انتهى تحميل الصفحة: " + url);
+
+                    // فحص إضافي: هل تم إنشاء الـ iframe الخاص بالإعلان فعلياً داخل الصفحة؟
+                    view.evaluateJavascript(
+                        "(function(){ " +
+                        "  var iframes = document.getElementsByTagName('iframe');" +
+                        "  return 'عدد الـ iframes: ' + iframes.length + ' | محتوى body: ' + document.body.innerHTML.length + ' حرف';" +
+                        "})();",
+                        value -> emitSignal("ad_debug", "فحص DOM: " + value)
+                    );
+                }
+
+                @Override
+                public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                    emitSignal("ad_debug", "طلب تنقل/تحميل: " + request.getUrl());
+                    return false; // نسمح للطلب يكمل عادي
                 }
             });
 
