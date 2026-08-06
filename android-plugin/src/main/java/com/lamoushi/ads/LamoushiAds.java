@@ -7,10 +7,18 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.WebChromeClient;
+import android.webkit.ConsoleMessage;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceError;
 import android.widget.FrameLayout;
 import org.godotengine.godot.Godot;
 import org.godotengine.godot.plugin.GodotPlugin;
 import org.godotengine.godot.plugin.UsedByGodot;
+import org.godotengine.godot.plugin.SignalInfo;
+
+import java.util.HashSet;
+import java.util.Set;
 
 public class LamoushiAds extends GodotPlugin {
     private Activity activity;
@@ -25,6 +33,13 @@ public class LamoushiAds extends GodotPlugin {
     @Override
     public String getPluginName() {
         return "LamoushiAds";
+    }
+
+    @Override
+    public Set<SignalInfo> getPluginSignals() {
+        Set<SignalInfo> signals = new HashSet<>();
+        signals.add(new SignalInfo("ad_debug", String.class));
+        return signals;
     }
 
     @UsedByGodot
@@ -49,7 +64,28 @@ public class LamoushiAds extends GodotPlugin {
             webView.getSettings().setJavaScriptEnabled(true);
             webView.getSettings().setDomStorageEnabled(true);
             webView.setBackgroundColor(Color.TRANSPARENT);
-            webView.setWebViewClient(new WebViewClient());
+
+            // التقاط رسائل console.log من JavaScript
+            webView.setWebChromeClient(new WebChromeClient() {
+                @Override
+                public boolean onConsoleMessage(ConsoleMessage cm) {
+                    emitSignal("ad_debug", "JS Console: " + cm.message() + " (line " + cm.lineNumber() + ")");
+                    return true;
+                }
+            });
+
+            // التقاط أخطاء تحميل الموارد (مثل فشل تحميل invoke.js)
+            webView.setWebViewClient(new WebViewClient() {
+                @Override
+                public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                    emitSignal("ad_debug", "خطأ تحميل: " + error.getDescription() + " - URL: " + request.getUrl());
+                }
+
+                @Override
+                public void onPageFinished(WebView view, String url) {
+                    emitSignal("ad_debug", "انتهى تحميل الصفحة: " + url);
+                }
+            });
 
             String html = "<html><body style='margin:0;padding:0;display:flex;justify-content:center;'>"
                         + "<script type='text/javascript'>"
