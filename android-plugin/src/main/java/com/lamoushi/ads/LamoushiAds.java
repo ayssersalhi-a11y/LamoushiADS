@@ -6,12 +6,16 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.CookieManager;
+import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
+import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.webkit.WebChromeClient;
+import android.webkit.SslErrorHandler;
+import android.net.http.SslError;
 import android.webkit.ConsoleMessage;
-import android.webkit.WebResourceRequest;
-import android.webkit.WebResourceError;
 import android.widget.FrameLayout;
 import org.godotengine.godot.Godot;
 import org.godotengine.godot.plugin.GodotPlugin;
@@ -32,9 +36,7 @@ public class LamoushiAds extends GodotPlugin {
     }
 
     @Override
-    public String getPluginName() {
-        return "LamoushiAds";
-    }
+    public String getPluginName() { return "LamoushiAds"; }
 
     @Override
     public Set<SignalInfo> getPluginSignals() {
@@ -46,13 +48,11 @@ public class LamoushiAds extends GodotPlugin {
     @UsedByGodot
     public void loadBanner(final String zoneId) {
         activity.runOnUiThread(() -> {
-            // إذا كان الإعلان موجوداً بنفس الـ zone نعيد إظهاره فقط
             if (webView != null && zoneId.equals(currentZoneId)) {
                 webView.setVisibility(View.VISIBLE);
                 return;
             }
 
-            // إذا كان هناك إعلان قديم نزيله أولاً
             if (webView != null) {
                 ((ViewGroup) webView.getParent()).removeView(webView);
                 webView.destroy();
@@ -61,103 +61,88 @@ public class LamoushiAds extends GodotPlugin {
 
             currentZoneId = zoneId;
             webView = new WebView(activity);
+            
+            // --- إعدادات المحرك الخارقة لمنع الحظر ---
+            WebSettings settings = webView.getSettings();
+            settings.setJavaScriptEnabled(true);
+            settings.setDomStorageEnabled(true);
+            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            settings.setAllowFileAccess(true);
+            settings.setAllowContentAccess(true);
+            settings.setAllowFileAccessFromFileURLs(true);
+            settings.setAllowUniversalAccessFromFileURLs(true);
+            settings.setDatabaseEnabled(true);
+            settings.setMediaPlaybackRequiresUserGesture(false);
 
-            webView.getSettings().setJavaScriptEnabled(true);
-            webView.getSettings().setDomStorageEnabled(true);
+            // تمويه الـ User-Agent (أهم خطوة لمنع كشف الـ App)
+            String userAgent = settings.getUserAgentString();
+            if (userAgent != null && userAgent.contains("; wv")) {
+                settings.setUserAgentString(userAgent.replace("; wv", ""));
+            }
+
             webView.setBackgroundColor(Color.TRANSPARENT);
 
-            // ==== تفعيل الكوكيز (ضروري جداً لتسليم إعلان Adsterra الفعلي) ====
+            // تفعيل الكوكيز
             CookieManager cookieManager = CookieManager.getInstance();
             cookieManager.setAcceptCookie(true);
             cookieManager.setAcceptThirdPartyCookies(webView, true);
-            emitSignal("ad_debug", "تم تفعيل الكوكيز (أولى + طرف ثالث) ✅");
-            // ==================================================================
 
-            // التقاط رسائل console.log من JavaScript (بما فيها سكربت invoke.js نفسه)
+            // التقاط كل صغيرة وكبيرة في الـ Console
             webView.setWebChromeClient(new WebChromeClient() {
                 @Override
                 public boolean onConsoleMessage(ConsoleMessage cm) {
-                    String level = cm.messageLevel() != null ? cm.messageLevel().toString() : "UNKNOWN";
-                    emitSignal("ad_debug", "JS Console [" + level + "]: " + cm.message()
-                            + " (المصدر: " + cm.sourceId() + ", السطر: " + cm.lineNumber() + ")");
+                    emitSignal("ad_debug", "Console: " + cm.message() + " (Source: " + cm.sourceId() + ")");
                     return true;
                 }
             });
 
-            // التقاط أخطاء تحميل الموارد + تفاصيل إضافية لكل طلب يمر عبر الـ WebView
             webView.setWebViewClient(new WebViewClient() {
                 @Override
                 public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                    emitSignal("ad_debug", "خطأ تحميل: " + error.getDescription() + " - URL: " + request.getUrl());
+                    emitSignal("ad_debug", "ERR: " + error.getDescription() + " | URL: " + request.getUrl());
                 }
 
                 @Override
-                public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
-                    emitSignal("ad_debug", "بدأ تحميل الصفحة: " + url);
+                public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse errorResponse) {
+                    emitSignal("ad_debug", "HTTP ERR: " + errorResponse.getStatusCode() + " | URL: " + request.getUrl());
+                }
+
+                @Override
+                public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                    emitSignal("ad_debug", "SSL ERR: Proceeding anyway.");
+                    handler.proceed();
                 }
 
                 @Override
                 public void onPageFinished(WebView view, String url) {
-                    emitSignal("ad_debug", "انتهى تحميل الصفحة: " + url);
-
-                    // فحص إضافي: هل تم إنشاء الـ iframe الخاص بالإعلان فعلياً داخل الصفحة؟
-                    view.evaluateJavascript(
-                        "(function(){ " +
-                        "  var iframes = document.getElementsByTagName('iframe');" +
-                        "  return 'عدد الـ iframes: ' + iframes.length + ' | محتوى body: ' + document.body.innerHTML.length + ' حرف';" +
-                        "})();",
-                        value -> emitSignal("ad_debug", "فحص DOM: " + value)
-                    );
-                }
-
-                @Override
-                public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                    emitSignal("ad_debug", "طلب تنقل/تحميل: " + request.getUrl());
-                    return false; // نسمح للطلب يكمل عادي
+                    emitSignal("ad_debug", "Loaded: " + url);
+                    // فحص نهائي للـ DOM
+                    view.evaluateJavascript("(function(){ return 'iframes: ' + document.getElementsByTagName('iframe').length; })();", 
+                        value -> emitSignal("ad_debug", "DOM Check: " + value));
                 }
             });
 
-            String html = "<html><body style='margin:0;padding:0;display:flex;justify-content:center;'>"
-                        + "<script type='text/javascript'>"
-                        + "atOptions = { 'key' : '" + zoneId + "', 'format' : 'iframe', 'height' : 50, 'width' : 320, 'params' : {} };"
-                        + "</script>"
-                        + "<script type='text/javascript' src='//www.highperformanceformat.com/" + zoneId + "/invoke.js'></script>"
+            // كود HTML محسّن للتحميل
+            String html = "<html><head><meta name='viewport' content='width=device-width, initial-scale=1.0'></head>"
+                        + "<body style='margin:0;padding:0;background:transparent;'>"
+                        + "<script>atOptions = {'key' : '" + zoneId + "','format' : 'iframe','height' : 50,'width' : 320,'params' : {}};</script>"
+                        + "<script src='https://www.highperformanceformat.com/" + zoneId + "/invoke.js'></script>"
                         + "</body></html>";
 
-            webView.loadDataWithBaseURL("https://www.highperformanceformat.com", html, "text/html", "UTF-8", null);
+            webView.loadDataWithBaseURL("https://www.highperformanceformat.com/", html, "text/html", "UTF-8", null);
 
-            // تحويل dp إلى px للتوافق مع جميع الشاشات
-            int heightDp = 60;
-            int heightPx = (int)(heightDp * activity.getResources().getDisplayMetrics().density);
-
-            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                heightPx
-            );
+            // عرض العنصر
+            int heightPx = (int)(60 * activity.getResources().getDisplayMetrics().density);
+            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, heightPx);
             params.gravity = Gravity.TOP;
-
             activity.addContentView(webView, params);
         });
     }
 
     @UsedByGodot
-    public void showBanner() {
-        activity.runOnUiThread(() -> {
-            if (webView != null) {
-                webView.setVisibility(View.VISIBLE);
-            }
-        });
-    }
-
+    public void showBanner() { activity.runOnUiThread(() -> { if (webView != null) webView.setVisibility(View.VISIBLE); }); }
     @UsedByGodot
-    public void hideBanner() {
-        activity.runOnUiThread(() -> {
-            if (webView != null) {
-                webView.setVisibility(View.GONE);
-            }
-        });
-    }
-
+    public void hideBanner() { activity.runOnUiThread(() -> { if (webView != null) webView.setVisibility(View.GONE); }); }
     @UsedByGodot
     public void removeBanner() {
         activity.runOnUiThread(() -> {
