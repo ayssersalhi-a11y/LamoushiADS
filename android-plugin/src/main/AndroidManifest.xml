@@ -8,6 +8,9 @@
         <meta-data
             android:name="org.godotengine.plugin.v2.LamoushiAds"
             android:value="com.lamoushi.ads.LamoushiAds" />
+        <meta-data
+            android:name="org.godotengine.plugin.v2.LamoushiRewarded"
+            android:value="com.lamoushi.ads.LamoushiRewarded" />
     </application>
 
 </manifest>
