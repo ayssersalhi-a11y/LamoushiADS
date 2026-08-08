@@ -37,6 +37,8 @@ public class LamoushiRewarded extends GodotPlugin {
             new Handler(Looper.getMainLooper());
 
     private boolean rewardGranted = false;
+    private boolean rewardWaiting = false;
+    private boolean adOpened = false;
 
     private static final int REWARD_DELAY_MS = 10000;
 
@@ -93,7 +95,7 @@ public class LamoushiRewarded extends GodotPlugin {
     }
 
     // ============================================================
-    // LOAD REWARDED
+    // LOAD
     // ============================================================
 
     @UsedByGodot
@@ -101,15 +103,24 @@ public class LamoushiRewarded extends GodotPlugin {
 
         activity.runOnUiThread(() -> {
 
-            rewardGranted = false;
-
-            destroyPop();
-            destroyHost();
+            emitSignal(
+                    "reward_debug",
+                    "=================================================="
+            );
 
             emitSignal(
                     "reward_debug",
-                    "🚀 بدء تحميل Rewarded Ad"
+                    "🚀 LOAD REWARDED START"
             );
+
+            rewardGranted = false;
+            rewardWaiting = false;
+            adOpened = false;
+
+            handler.removeCallbacksAndMessages(null);
+
+            destroyPop();
+            destroyHost();
 
             emitSignal(
                     "reward_debug",
@@ -121,9 +132,9 @@ public class LamoushiRewarded extends GodotPlugin {
                     "🌐 AD_BASE_URL = " + AD_BASE_URL
             );
 
-            // ----------------------------------------------------
-            // Cookies
-            // ----------------------------------------------------
+            // ========================================================
+            // COOKIES
+            // ========================================================
 
             CookieManager cm =
                     CookieManager.getInstance();
@@ -135,28 +146,39 @@ public class LamoushiRewarded extends GodotPlugin {
                     "🍪 AcceptCookie = true"
             );
 
-            // ----------------------------------------------------
-            // WebView
-            // ----------------------------------------------------
+            if (Build.VERSION.SDK_INT >=
+                    Build.VERSION_CODES.LOLLIPOP) {
+
+                emitSignal(
+                        "reward_debug",
+                        "🍪 Third-party cookies will be enabled"
+                );
+            }
+
+            // ========================================================
+            // HOST WEBVIEW
+            // ========================================================
 
             hostWebView =
                     new WebView(activity);
 
-            WebSettings s =
+            WebSettings settings =
                     hostWebView.getSettings();
 
-            s.setJavaScriptEnabled(true);
-            s.setDomStorageEnabled(true);
+            settings.setJavaScriptEnabled(true);
+            settings.setDomStorageEnabled(true);
 
-            s.setSupportMultipleWindows(true);
-            s.setJavaScriptCanOpenWindowsAutomatically(true);
+            settings.setSupportMultipleWindows(true);
+            settings.setJavaScriptCanOpenWindowsAutomatically(true);
 
-            s.setMixedContentMode(
+            settings.setMixedContentMode(
                     WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             );
 
-            s.setAllowFileAccess(true);
-            s.setAllowContentAccess(true);
+            settings.setAllowFileAccess(true);
+            settings.setAllowContentAccess(true);
+
+            settings.setDatabaseEnabled(true);
 
             if (Build.VERSION.SDK_INT >=
                     Build.VERSION_CODES.LOLLIPOP) {
@@ -172,37 +194,37 @@ public class LamoushiRewarded extends GodotPlugin {
                 );
             }
 
-            // ====================================================
+            // ========================================================
             // HOST CHROME CLIENT
-            // ====================================================
+            // ========================================================
 
             hostWebView.setWebChromeClient(
                     new WebChromeClient() {
 
                         @Override
                         public boolean onConsoleMessage(
-                                ConsoleMessage cm2
+                                ConsoleMessage message
                         ) {
 
                             emitSignal(
                                     "reward_debug",
                                     "HOST JS"
                                             + " | level="
-                                            + cm2.messageLevel()
+                                            + message.messageLevel()
                                             + " | message="
-                                            + cm2.message()
+                                            + message.message()
                                             + " | source="
-                                            + cm2.sourceId()
+                                            + message.sourceId()
                                             + " | line="
-                                            + cm2.lineNumber()
+                                            + message.lineNumber()
                             );
 
                             return true;
                         }
 
-                        // ------------------------------------------------
-                        // window.open()
-                        // ------------------------------------------------
+                        // ====================================================
+                        // WINDOW.OPEN
+                        // ====================================================
 
                         @Override
                         public boolean onCreateWindow(
@@ -211,6 +233,11 @@ public class LamoushiRewarded extends GodotPlugin {
                                 boolean isUserGesture,
                                 android.os.Message resultMsg
                         ) {
+
+                            emitSignal(
+                                    "reward_debug",
+                                    "=================================================="
+                            );
 
                             emitSignal(
                                     "reward_debug",
@@ -229,9 +256,11 @@ public class LamoushiRewarded extends GodotPlugin {
                                             + isDialog
                             );
 
-                            // --------------------------------------------
-                            // إنشاء Pop WebView
-                            // --------------------------------------------
+                            adOpened = true;
+
+                            // ------------------------------------------------
+                            // إنشاء POP
+                            // ------------------------------------------------
 
                             destroyPop();
 
@@ -253,6 +282,11 @@ public class LamoushiRewarded extends GodotPlugin {
                                     WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                             );
 
+                            ps.setAllowFileAccess(true);
+                            ps.setAllowContentAccess(true);
+
+                            ps.setDatabaseEnabled(true);
+
                             if (Build.VERSION.SDK_INT >=
                                     Build.VERSION_CODES.LOLLIPOP) {
 
@@ -264,7 +298,7 @@ public class LamoushiRewarded extends GodotPlugin {
                             }
 
                             // =================================================
-                            // POP CHROME CLIENT
+                            // POP CHROME
                             // =================================================
 
                             popWebView.setWebChromeClient(
@@ -272,20 +306,20 @@ public class LamoushiRewarded extends GodotPlugin {
 
                                         @Override
                                         public boolean onConsoleMessage(
-                                                ConsoleMessage consoleMessage
+                                                ConsoleMessage message
                                         ) {
 
                                             emitSignal(
                                                     "reward_debug",
                                                     "POP JS"
                                                             + " | level="
-                                                            + consoleMessage.messageLevel()
+                                                            + message.messageLevel()
                                                             + " | message="
-                                                            + consoleMessage.message()
+                                                            + message.message()
                                                             + " | source="
-                                                            + consoleMessage.sourceId()
+                                                            + message.sourceId()
                                                             + " | line="
-                                                            + consoleMessage.lineNumber()
+                                                            + message.lineNumber()
                                             );
 
                                             return true;
@@ -321,7 +355,7 @@ public class LamoushiRewarded extends GodotPlugin {
                             );
 
                             // =================================================
-                            // POP WEBVIEW CLIENT
+                            // POP CLIENT
                             // =================================================
 
                             popWebView.setWebViewClient(
@@ -329,31 +363,31 @@ public class LamoushiRewarded extends GodotPlugin {
 
                                         @Override
                                         public void onPageStarted(
-                                                WebView v,
+                                                WebView view,
                                                 String url,
                                                 android.graphics.Bitmap favicon
                                         ) {
 
                                             emitSignal(
                                                     "reward_debug",
-                                                    "🔵 POP PAGE START"
-                                                            + " | "
+                                                    "🔵 POP PAGE START | "
                                                             + url
                                             );
                                         }
 
                                         @Override
                                         public void onPageFinished(
-                                                WebView v,
+                                                WebView view,
                                                 String url
                                         ) {
 
                                             emitSignal(
                                                     "reward_debug",
-                                                    "✅ POP PAGE FINISHED"
-                                                            + " | "
+                                                    "✅ POP PAGE FINISHED | "
                                                             + url
                                             );
+
+                                            inspectPopDocument(view);
                                         }
 
                                         @Override
@@ -383,19 +417,19 @@ public class LamoushiRewarded extends GodotPlugin {
                                         public void onReceivedHttpError(
                                                 WebView view,
                                                 WebResourceRequest request,
-                                                WebResourceResponse errorResponse
+                                                WebResourceResponse response
                                         ) {
 
                                             if (request != null &&
-                                                    errorResponse != null) {
+                                                    response != null) {
 
                                                 emitSignal(
                                                         "reward_debug",
                                                         "⚠️ POP HTTP ERROR"
                                                                 + " | status="
-                                                                + errorResponse.getStatusCode()
+                                                                + response.getStatusCode()
                                                                 + " | mime="
-                                                                + errorResponse.getMimeType()
+                                                                + response.getMimeType()
                                                                 + " | url="
                                                                 + request.getUrl()
                                                 );
@@ -431,23 +465,13 @@ public class LamoushiRewarded extends GodotPlugin {
 
                                                 emitSignal(
                                                         "reward_debug",
-                                                        "➡️ POP NAVIGATION"
-                                                                + " | "
+                                                        "➡️ POP NAVIGATION | "
                                                                 + request.getUrl()
                                                 );
                                             }
 
                                             return false;
                                         }
-
-                                        // ------------------------------------
-                                        // تسجيل الطلبات فقط
-                                        //
-                                        // مهم:
-                                        // لا نعيد تحميل الطلب.
-                                        // لا نستخدم HttpURLConnection.
-                                        // لا نعدل الاستجابة.
-                                        // ------------------------------------
 
                                         @Override
                                         public WebResourceResponse
@@ -456,17 +480,10 @@ public class LamoushiRewarded extends GodotPlugin {
                                                 WebResourceRequest request
                                         ) {
 
-                                            if (request != null) {
-
-                                                emitSignal(
-                                                        "reward_debug",
-                                                        "🌐 POP REQUEST"
-                                                                + " | "
-                                                                + request.getMethod()
-                                                                + " "
-                                                                + request.getUrl()
-                                                );
-                                            }
+                                            logRequest(
+                                                    "POP",
+                                                    request
+                                            );
 
                                             return super
                                                     .shouldInterceptRequest(
@@ -477,9 +494,9 @@ public class LamoushiRewarded extends GodotPlugin {
                                     }
                             );
 
-                            // ------------------------------------------------
-                            // WebView مخفي
-                            // ------------------------------------------------
+                            // =================================================
+                            // POP مخفي
+                            // =================================================
 
                             FrameLayout.LayoutParams lp =
                                     new FrameLayout.LayoutParams(
@@ -492,9 +509,9 @@ public class LamoushiRewarded extends GodotPlugin {
                                     lp
                             );
 
-                            // ------------------------------------------------
-                            // تمرير WebView إلى window.open()
-                            // ------------------------------------------------
+                            // =================================================
+                            // تمرير POP إلى window.open
+                            // =================================================
 
                             WebView.WebViewTransport transport =
                                     (WebView.WebViewTransport)
@@ -512,19 +529,29 @@ public class LamoushiRewarded extends GodotPlugin {
                             );
 
                             emitSignal(
+                                    "reward_debug",
+                                    "🎯 AD OPENED EVENT"
+                            );
+
+                            emitSignal(
                                     "reward_ad_opened"
                             );
 
                             scheduleReward();
+
+                            emitSignal(
+                                    "reward_debug",
+                                    "=================================================="
+                            );
 
                             return true;
                         }
                     }
             );
 
-            // ============================================================
-            // HOST WEBVIEW CLIENT
-            // ============================================================
+            // ========================================================
+            // HOST CLIENT
+            // ========================================================
 
             hostWebView.setWebViewClient(
                     new WebViewClient() {
@@ -561,30 +588,13 @@ public class LamoushiRewarded extends GodotPlugin {
                                             + url
                             );
 
-                            // ---------------------------------------------
-                            // معلومات الصفحة من داخل JavaScript
-                            // ---------------------------------------------
+                            installJavaScriptDiagnostics(view);
 
-                            view.evaluateJavascript(
-                                    "(function(){"
-                                            + "return JSON.stringify({"
-                                            + "bodyLength: document.body ? document.body.innerHTML.length : -1,"
-                                            + "href: location.href,"
-                                            + "readyState: document.readyState,"
-                                            + "title: document.title,"
-                                            + "trigger: !!document.getElementById('trigger')"
-                                            + "});"
-                                            + "})();",
-                                    value -> emitSignal(
-                                            "reward_debug",
-                                            "📄 HOST DOCUMENT INFO = "
-                                                    + value
-                                    )
-                            );
+                            inspectHostDocument(view);
                         }
 
                         // ====================================================
-                        // تسجيل أخطاء HOST
+                        // HOST ERROR
                         // ====================================================
 
                         @Override
@@ -611,28 +621,36 @@ public class LamoushiRewarded extends GodotPlugin {
                             );
                         }
 
+                        // ====================================================
+                        // HOST HTTP ERROR
+                        // ====================================================
+
                         @Override
                         public void onReceivedHttpError(
                                 WebView view,
                                 WebResourceRequest request,
-                                WebResourceResponse errorResponse
+                                WebResourceResponse response
                         ) {
 
                             if (request != null &&
-                                    errorResponse != null) {
+                                    response != null) {
 
                                 emitSignal(
                                         "reward_debug",
                                         "⚠️ HOST HTTP ERROR"
                                                 + " | status="
-                                                + errorResponse.getStatusCode()
+                                                + response.getStatusCode()
                                                 + " | mime="
-                                                + errorResponse.getMimeType()
+                                                + response.getMimeType()
                                                 + " | url="
                                                 + request.getUrl()
                                 );
                             }
                         }
+
+                        // ====================================================
+                        // SSL
+                        // ====================================================
 
                         @Override
                         public void onReceivedSslError(
@@ -650,9 +668,12 @@ public class LamoushiRewarded extends GodotPlugin {
                                             + error.getUrl()
                             );
 
-                            // لا نتجاوز SSL
                             sslHandler.cancel();
                         }
+
+                        // ====================================================
+                        // NAVIGATION
+                        // ====================================================
 
                         @Override
                         public boolean shouldOverrideUrlLoading(
@@ -664,8 +685,7 @@ public class LamoushiRewarded extends GodotPlugin {
 
                                 emitSignal(
                                         "reward_debug",
-                                        "➡️ HOST NAVIGATION"
-                                                + " | "
+                                        "➡️ HOST NAVIGATION | "
                                                 + request.getUrl()
                                 );
                             }
@@ -674,11 +694,7 @@ public class LamoushiRewarded extends GodotPlugin {
                         }
 
                         // ====================================================
-                        // تسجيل الطلبات فقط
-                        //
-                        // لا اعتراض.
-                        // لا HttpURLConnection.
-                        // لا إعادة بناء للاستجابة.
+                        // REQUEST LOGGER
                         // ====================================================
 
                         @Override
@@ -688,53 +704,32 @@ public class LamoushiRewarded extends GodotPlugin {
                                 WebResourceRequest request
                         ) {
 
-                            if (request != null) {
-
-                                emitSignal(
-                                        "reward_debug",
-                                        "🌐 HOST REQUEST"
-                                                + " | "
-                                                + request.getMethod()
-                                                + " "
-                                                + request.getUrl()
-                                );
-
-                                emitSignal(
-                                        "reward_debug",
-                                        "HOST isForMainFrame="
-                                                + request.isForMainFrame()
-                                );
-
-                                emitSignal(
-                                        "reward_debug",
-                                        "HOST hasGesture="
-                                                + request.hasGesture()
-                                );
-                            }
-
-                            // ------------------------------------------------
-                            // النقطة المهمة:
-                            // نترك WebView يتولى الطلب بنفسه.
-                            // ------------------------------------------------
-
-                            return super.shouldInterceptRequest(
-                                    view,
+                            logRequest(
+                                    "HOST",
                                     request
                             );
+
+                            return super
+                                    .shouldInterceptRequest(
+                                            view,
+                                            request
+                                    );
                         }
                     }
             );
 
-            // ============================================================
+            // ========================================================
             // HTML
-            // ============================================================
+            // ========================================================
 
             String html =
                     "<!DOCTYPE html>"
                             + "<html>"
                             + "<head>"
+                            + "<meta charset='UTF-8'>"
                             + "<meta name='viewport' "
-                            + "content='width=device-width, initial-scale=1.0'>"
+                            + "content='width=device-width,initial-scale=1.0'>"
+
                             + "<style>"
                             + "html,body{"
                             + "margin:0;"
@@ -744,22 +739,34 @@ public class LamoushiRewarded extends GodotPlugin {
                             + "}"
                             + "#trigger{"
                             + "position:fixed;"
-                            + "top:0;"
                             + "left:0;"
+                            + "top:0;"
                             + "width:100%;"
                             + "height:100%;"
                             + "}"
                             + "</style>"
+
                             + "</head>"
+
                             + "<body>"
+
                             + "<div id='trigger'></div>"
+
                             + "<script>"
-                            + "console.log('trigger موجود = ' + "
-                            + "!!document.getElementById('trigger'));"
+                            + "console.log("
+                            + "'🔬 HTML loaded'"
+                            + ");"
+
+                            + "console.log("
+                            + "'trigger موجود = ' + "
+                            + "!!document.getElementById('trigger')"
+                            + ");"
                             + "</script>"
+
                             + "<script src='"
                             + AD_SCRIPT_URL
                             + "'></script>"
+
                             + "</body>"
                             + "</html>";
 
@@ -774,6 +781,10 @@ public class LamoushiRewarded extends GodotPlugin {
                             + AD_SCRIPT_URL
             );
 
+            // ========================================================
+            // LOAD DATA
+            // ========================================================
+
             hostWebView.loadDataWithBaseURL(
                     AD_BASE_URL,
                     html,
@@ -782,9 +793,9 @@ public class LamoushiRewarded extends GodotPlugin {
                     null
             );
 
-            // ============================================================
+            // ========================================================
             // HOST مخفي
-            // ============================================================
+            // ========================================================
 
             FrameLayout.LayoutParams hp =
                     new FrameLayout.LayoutParams(
@@ -805,13 +816,379 @@ public class LamoushiRewarded extends GodotPlugin {
     }
 
     // ============================================================
-    // SHOW REWARDED
+    // JAVASCRIPT DIAGNOSTICS
+    // ============================================================
+
+    private void installJavaScriptDiagnostics(
+            WebView view
+    ) {
+
+        emitSignal(
+                "reward_debug",
+                "🔬 تثبيت JavaScript diagnostics"
+        );
+
+        String js =
+                "(function(){"
+
+                        + "if(window.__LAMOUSHI_DIAGNOSTICS__)"
+                        + "return;"
+
+                        + "window.__LAMOUSHI_DIAGNOSTICS__=true;"
+
+                        // --------------------------------------------
+                        // window.open
+                        // --------------------------------------------
+
+                        + "try{"
+                        + "var oldOpen=window.open;"
+                        + "window.open=function(){"
+
+                        + "console.log("
+                        + "'🚨 window.open CALLED'"
+                        + ");"
+
+                        + "try{"
+                        + "console.log("
+                        + "'window.open args=' + "
+                        + "JSON.stringify("
+                        + "Array.prototype.slice.call(arguments)"
+                        + ")"
+                        + ");"
+                        + "}catch(e){"
+                        + "console.log("
+                        + "'window.open args serialization failed'"
+                        + ");"
+                        + "}"
+
+                        + "var result=oldOpen.apply(this,arguments);"
+
+                        + "console.log("
+                        + "'window.open returned=' + "
+                        + "(result ? 'OBJECT' : 'NULL')"
+                        + ");"
+
+                        + "return result;"
+                        + "};"
+                        + "}catch(e){"
+                        + "console.log("
+                        + "'❌ window.open hook failed: ' + e"
+                        + ");"
+                        + "}"
+
+                        // --------------------------------------------
+                        // click monitoring
+                        // --------------------------------------------
+
+                        + "document.addEventListener("
+                        + "'click',"
+                        + "function(e){"
+
+                        + "console.log("
+                        + "'🖱 CLICK'"
+                        + " + ' target=' + "
+                        + "(e.target ? e.target.tagName : 'null')"
+                        + ");"
+
+                        + "},"
+                        + "true"
+                        + ");"
+
+                        // --------------------------------------------
+                        // DOM mutation observer
+                        // --------------------------------------------
+
+                        + "try{"
+
+                        + "var observer="
+                        + "new MutationObserver(function(mutations){"
+
+                        + "console.log("
+                        + "'🔄 DOM MUTATION count=' + "
+                        + "mutations.length"
+                        + ");"
+
+                        + "});"
+
+                        + "observer.observe("
+                        + "document.documentElement,"
+                        + "{childList:true,subtree:true,attributes:true}"
+                        + ");"
+
+                        + "}catch(e){"
+
+                        + "console.log("
+                        + "'❌ MutationObserver failed: ' + e"
+                        + ");"
+
+                        + "}"
+
+                        // --------------------------------------------
+                        // location monitoring
+                        // --------------------------------------------
+
+                        + "console.log("
+                        + "'🔬 diagnostics installed'"
+                        + ");"
+
+                        + "console.log("
+                        + "'current href=' + location.href"
+                        + ");"
+
+                        + "})();";
+
+        view.evaluateJavascript(
+                js,
+                value -> emitSignal(
+                        "reward_debug",
+                        "🔬 Diagnostics install result = "
+                                + value
+                )
+        );
+    }
+
+    // ============================================================
+    // HOST DOCUMENT INSPECTION
+    // ============================================================
+
+    private void inspectHostDocument(
+            WebView view
+    ) {
+
+        String js =
+                "(function(){"
+
+                        + "var r={};"
+
+                        + "try{"
+
+                        + "r.href=location.href;"
+                        + "r.origin=location.origin;"
+                        + "r.readyState=document.readyState;"
+                        + "r.title=document.title;"
+
+                        + "r.bodyLength="
+                        + "(document.body?"
+                        + "document.body.innerHTML.length"
+                        + ":-1);"
+
+                        + "r.elementCount="
+                        + "document.querySelectorAll('*').length;"
+
+                        + "r.triggerExists="
+                        + "!!document.getElementById('trigger');"
+
+                        + "r.triggerTag="
+                        + "(document.getElementById('trigger')?"
+                        + "document.getElementById('trigger').tagName"
+                        + ":null);"
+
+                        + "r.iframes="
+                        + "document.querySelectorAll('iframe').length;"
+
+                        + "r.links="
+                        + "document.querySelectorAll('a').length;"
+
+                        + "r.buttons="
+                        + "document.querySelectorAll('button').length;"
+
+                        + "r.forms="
+                        + "document.querySelectorAll('form').length;"
+
+                        + "r.inputs="
+                        + "document.querySelectorAll('input').length;"
+
+                        + "r.scripts="
+                        + "document.querySelectorAll('script').length;"
+
+                        + "r.images="
+                        + "document.querySelectorAll('img').length;"
+
+                        + "r.bodyText="
+                        + "(document.body?"
+                        + "document.body.innerText.substring(0,500)"
+                        + ":''"
+                        + ");"
+
+                        + "}catch(e){"
+                        + "r.error=String(e);"
+                        + "}"
+
+                        + "return JSON.stringify(r);"
+
+                        + "})();";
+
+        view.evaluateJavascript(
+                js,
+                value -> emitSignal(
+                        "reward_debug",
+                        "🔬 HOST DOCUMENT INSPECTION = "
+                                + value
+                )
+        );
+    }
+
+    // ============================================================
+    // POP DOCUMENT INSPECTION
+    // ============================================================
+
+    private void inspectPopDocument(
+            WebView view
+    ) {
+
+        String js =
+                "(function(){"
+
+                        + "var r={};"
+
+                        + "try{"
+
+                        + "r.href=location.href;"
+                        + "r.origin=location.origin;"
+                        + "r.readyState=document.readyState;"
+                        + "r.title=document.title;"
+
+                        + "r.bodyLength="
+                        + "(document.body?"
+                        + "document.body.innerHTML.length"
+                        + ":-1);"
+
+                        + "r.iframes="
+                        + "document.querySelectorAll('iframe').length;"
+
+                        + "r.links="
+                        + "document.querySelectorAll('a').length;"
+
+                        + "r.scripts="
+                        + "document.querySelectorAll('script').length;"
+
+                        + "r.elements="
+                        + "document.querySelectorAll('*').length;"
+
+                        + "}catch(e){"
+                        + "r.error=String(e);"
+                        + "}"
+
+                        + "return JSON.stringify(r);"
+
+                        + "})();";
+
+        view.evaluateJavascript(
+                js,
+                value -> emitSignal(
+                        "reward_debug",
+                        "🔬 POP DOCUMENT INSPECTION = "
+                                + value
+                )
+        );
+    }
+
+    // ============================================================
+    // REQUEST LOGGER
+    // ============================================================
+
+    private void logRequest(
+            String source,
+            WebResourceRequest request
+    ) {
+
+        if (request == null) {
+            return;
+        }
+
+        emitSignal(
+                "reward_debug",
+                "=================================================="
+        );
+
+        emitSignal(
+                "reward_debug",
+                "🌐 " + source
+                        + " REQUEST | "
+                        + request.getMethod()
+                        + " "
+                        + request.getUrl()
+        );
+
+        emitSignal(
+                "reward_debug",
+                source
+                        + " isForMainFrame="
+                        + request.isForMainFrame()
+        );
+
+        emitSignal(
+                "reward_debug",
+                source
+                        + " hasGesture="
+                        + request.hasGesture()
+        );
+
+        try {
+
+            if (request.getRequestHeaders() != null) {
+
+                for (
+                        String key :
+                        request.getRequestHeaders().keySet()
+                ) {
+
+                    String value =
+                            request.getRequestHeaders().get(key);
+
+                    if (key == null) {
+                        continue;
+                    }
+
+                    // نعرض أهم الرؤوس فقط
+                    if (
+                            key.equalsIgnoreCase("Referer")
+                                    ||
+                            key.equalsIgnoreCase("User-Agent")
+                                    ||
+                            key.equalsIgnoreCase("Accept")
+                    ) {
+
+                        emitSignal(
+                                "reward_debug",
+                                source
+                                        + " HEADER | "
+                                        + key
+                                        + " = "
+                                        + value
+                        );
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+
+            emitSignal(
+                    "reward_debug",
+                    "⚠️ Header logging error = "
+                            + e.getMessage()
+            );
+        }
+
+        emitSignal(
+                "reward_debug",
+                "=================================================="
+        );
+    }
+
+    // ============================================================
+    // SHOW
     // ============================================================
 
     @UsedByGodot
     public void showRewardedAd() {
 
         activity.runOnUiThread(() -> {
+
+            emitSignal(
+                    "reward_debug",
+                    "=================================================="
+            );
 
             emitSignal(
                     "reward_debug",
@@ -828,41 +1205,254 @@ public class LamoushiRewarded extends GodotPlugin {
                 return;
             }
 
-            // --------------------------------------------------------
-            // التحقق من وجود trigger
-            // --------------------------------------------------------
+            if (rewardWaiting) {
 
-            String js =
+                emitSignal(
+                        "reward_debug",
+                        "⚠️ Reward timer يعمل بالفعل"
+                );
+
+                return;
+            }
+
+            // ====================================================
+            // PRE-CLICK INSPECTION
+            // ====================================================
+
+            String preJs =
                     "(function(){"
-                            + "var el=document.getElementById('trigger');"
-                            + "if(!el){"
-                            + "console.log('❌ trigger غير موجود');"
-                            + "return false;"
+                            + "var r={};"
+
+                            + "r.href=location.href;"
+                            + "r.readyState=document.readyState;"
+
+                            + "var el="
+                            + "document.getElementById('trigger');"
+
+                            + "r.triggerExists=!!el;"
+
+                            + "if(el){"
+
+                            + "r.triggerTag=el.tagName;"
+                            + "r.triggerId=el.id;"
+                            + "r.triggerClass=el.className;"
+
+                            + "try{"
+                            + "r.triggerRect="
+                            + "JSON.stringify("
+                            + "el.getBoundingClientRect()"
+                            + ");"
+                            + "}catch(e){}"
+
                             + "}"
-                            + "console.log('trigger موجود — dispatching click');"
-                            + "var ev=new MouseEvent('click',{"
-                            + "bubbles:true,"
-                            + "cancelable:true,"
-                            + "view:window"
-                            + "});"
-                            + "var result=el.dispatchEvent(ev);"
-                            + "console.log('dispatchEvent result=' + result);"
-                            + "return result;"
+
+                            + "r.iframes="
+                            + "document.querySelectorAll('iframe').length;"
+
+                            + "r.links="
+                            + "document.querySelectorAll('a').length;"
+
+                            + "r.scripts="
+                            + "document.querySelectorAll('script').length;"
+
+                            + "return JSON.stringify(r);"
+
                             + "})();";
 
             hostWebView.evaluateJavascript(
-                    js,
+                    preJs,
                     value -> {
 
                         emitSignal(
                                 "reward_debug",
-                                "👆 تم تمرير ضغطة المستخدم"
-                                        + " | JS result="
+                                "🔬 PRE-CLICK INSPECTION = "
                                         + value
                         );
+
+                        dispatchRewardClick();
                     }
             );
         });
+    }
+
+    // ============================================================
+    // DISPATCH CLICK
+    // ============================================================
+
+    private void dispatchRewardClick() {
+
+        if (hostWebView == null) {
+
+            emitSignal(
+                    "reward_debug",
+                    "❌ Cannot dispatch: HOST = null"
+            );
+
+            return;
+        }
+
+        String js =
+                "(function(){"
+
+                        + "var el="
+                        + "document.getElementById('trigger');"
+
+                        + "if(!el){"
+
+                        + "console.log("
+                        + "'❌ trigger غير موجود'"
+                        + ");"
+
+                        + "return false;"
+                        + "}"
+
+                        + "console.log("
+                        + "'trigger موجود — dispatching click'"
+                        + ");"
+
+                        + "var ev="
+                        + "new MouseEvent('click',{"
+
+                        + "bubbles:true,"
+                        + "cancelable:true,"
+                        + "view:window,"
+                        + "detail:1"
+
+                        + "});"
+
+                        + "var result="
+                        + "el.dispatchEvent(ev);"
+
+                        + "console.log("
+                        + "'dispatchEvent result=' + result"
+                        + ");"
+
+                        + "return result;"
+
+                        + "})();";
+
+        hostWebView.evaluateJavascript(
+                js,
+                value -> {
+
+                    emitSignal(
+                            "reward_debug",
+                            "👆 CLICK DISPATCH RESULT = "
+                                    + value
+                    );
+
+                    // ------------------------------------------------
+                    // POST CLICK
+                    // ------------------------------------------------
+
+                    handler.postDelayed(
+                            () -> inspectAfterClick(),
+                            1500
+                    );
+                }
+        );
+    }
+
+    // ============================================================
+    // POST CLICK INSPECTION
+    // ============================================================
+
+    private void inspectAfterClick() {
+
+        if (hostWebView == null) {
+            return;
+        }
+
+        emitSignal(
+                "reward_debug",
+                "=================================================="
+        );
+
+        emitSignal(
+                "reward_debug",
+                "🔬 POST-CLICK INSPECTION START"
+        );
+
+        String js =
+                "(function(){"
+
+                        + "var r={};"
+
+                        + "try{"
+
+                        + "r.href=location.href;"
+                        + "r.readyState=document.readyState;"
+                        + "r.title=document.title;"
+
+                        + "r.bodyLength="
+                        + "(document.body?"
+                        + "document.body.innerHTML.length"
+                        + ":-1);"
+
+                        + "r.elements="
+                        + "document.querySelectorAll('*').length;"
+
+                        + "r.iframes="
+                        + "document.querySelectorAll('iframe').length;"
+
+                        + "r.links="
+                        + "document.querySelectorAll('a').length;"
+
+                        + "r.buttons="
+                        + "document.querySelectorAll('button').length;"
+
+                        + "r.forms="
+                        + "document.querySelectorAll('form').length;"
+
+                        + "r.inputs="
+                        + "document.querySelectorAll('input').length;"
+
+                        + "r.scripts="
+                        + "document.querySelectorAll('script').length;"
+
+                        + "r.images="
+                        + "document.querySelectorAll('img').length;"
+
+                        + "r.triggerExists="
+                        + "!!document.getElementById('trigger');"
+
+                        + "r.bodyText="
+                        + "(document.body?"
+                        + "document.body.innerText.substring(0,1000)"
+                        + ":''"
+                        + ");"
+
+                        + "}catch(e){"
+
+                        + "r.error=String(e);"
+
+                        + "}"
+
+                        + "return JSON.stringify(r);"
+
+                        + "})();";
+
+        hostWebView.evaluateJavascript(
+                js,
+                value -> {
+
+                    emitSignal(
+                            "reward_debug",
+                            "🔬 POST-CLICK DOM = "
+                                    + value
+                    );
+
+                    emitSignal(
+                            "reward_debug",
+                            "🔬 POST-CLICK INSPECTION END"
+                    );
+
+                    emitSignal(
+                            "reward_debug",
+                            "=================================================="
+                    );
+                }
+        );
     }
 
     // ============================================================
@@ -871,8 +1461,29 @@ public class LamoushiRewarded extends GodotPlugin {
 
     private void scheduleReward() {
 
+        if (rewardWaiting || rewardGranted) {
+
+            emitSignal(
+                    "reward_debug",
+                    "⚠️ scheduleReward ignored"
+            );
+
+            return;
+        }
+
+        rewardWaiting = true;
+
+        emitSignal(
+                "reward_debug",
+                "⏳ بدء مؤقت المكافأة = "
+                        + REWARD_DELAY_MS
+                        + " ms"
+        );
+
         handler.postDelayed(
                 () -> {
+
+                    rewardWaiting = false;
 
                     if (!rewardGranted) {
 
@@ -902,6 +1513,15 @@ public class LamoushiRewarded extends GodotPlugin {
 
         activity.runOnUiThread(() -> {
 
+            emitSignal(
+                    "reward_debug",
+                    "🛑 closeRewardedAd()"
+            );
+
+            handler.removeCallbacksAndMessages(null);
+
+            rewardWaiting = false;
+
             destroyPop();
             destroyHost();
 
@@ -919,13 +1539,34 @@ public class LamoushiRewarded extends GodotPlugin {
 
         if (popWebView != null) {
 
-            if (popWebView.getParent() != null) {
+            emitSignal(
+                    "reward_debug",
+                    "🧹 Destroying POP WebView"
+            );
 
-                ((ViewGroup) popWebView.getParent())
-                        .removeView(popWebView);
+            try {
+
+                if (popWebView.getParent() != null) {
+
+                    ((ViewGroup)
+                            popWebView.getParent())
+                            .removeView(popWebView);
+                }
+
+                popWebView.stopLoading();
+                popWebView.loadUrl("about:blank");
+                popWebView.clearHistory();
+                popWebView.destroy();
+
+            } catch (Exception e) {
+
+                emitSignal(
+                        "reward_debug",
+                        "⚠️ POP destroy error = "
+                                + e.getMessage()
+                );
             }
 
-            popWebView.destroy();
             popWebView = null;
         }
     }
@@ -938,13 +1579,34 @@ public class LamoushiRewarded extends GodotPlugin {
 
         if (hostWebView != null) {
 
-            if (hostWebView.getParent() != null) {
+            emitSignal(
+                    "reward_debug",
+                    "🧹 Destroying HOST WebView"
+            );
 
-                ((ViewGroup) hostWebView.getParent())
-                        .removeView(hostWebView);
+            try {
+
+                if (hostWebView.getParent() != null) {
+
+                    ((ViewGroup)
+                            hostWebView.getParent())
+                            .removeView(hostWebView);
+                }
+
+                hostWebView.stopLoading();
+                hostWebView.loadUrl("about:blank");
+                hostWebView.clearHistory();
+                hostWebView.destroy();
+
+            } catch (Exception e) {
+
+                emitSignal(
+                        "reward_debug",
+                        "⚠️ HOST destroy error = "
+                                + e.getMessage()
+                );
             }
 
-            hostWebView.destroy();
             hostWebView = null;
         }
     }
@@ -957,6 +1619,8 @@ public class LamoushiRewarded extends GodotPlugin {
     public void onMainDestroy() {
 
         handler.removeCallbacksAndMessages(null);
+
+        rewardWaiting = false;
 
         destroyPop();
         destroyHost();
