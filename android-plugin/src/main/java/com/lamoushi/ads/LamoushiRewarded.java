@@ -2,13 +2,16 @@ package com.lamoushi.ads;
 
 import android.app.Activity;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.net.http.SslError;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.MotionEvent;
+import android.view.View;
 import android.view.ViewGroup;
-import android.webkit.CookieManager;
 import android.webkit.ConsoleMessage;
+import android.webkit.CookieManager;
 import android.webkit.SslErrorHandler;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
@@ -34,19 +37,22 @@ public class LamoushiRewarded extends GodotPlugin {
     private WebView hostWebView;
     private WebView popWebView;
 
+    private FrameLayout hostContainer;
+    private FrameLayout popContainer;
+
     private final Handler handler =
             new Handler(Looper.getMainLooper());
-
-    private boolean rewardGranted = false;
-    private boolean rewardScheduled = false;
-
-    private static final int REWARD_DELAY_MS = 10000;
 
     private static final String AD_SCRIPT_URL =
             "https://pl30736587.effectivecpmnetwork.com/25/46/ff/2546ffc01c441637dc550c6584facfe8.js";
 
     private static final String AD_BASE_URL =
             "https://pl30736587.effectivecpmnetwork.com/";
+
+    private static final int DEBUG_DELAY_1 = 1000;
+    private static final int DEBUG_DELAY_3 = 3000;
+    private static final int DEBUG_DELAY_5 = 5000;
+    private static final int DEBUG_DELAY_10 = 10000;
 
     public LamoushiRewarded(Godot godot) {
         super(godot);
@@ -98,16 +104,12 @@ public class LamoushiRewarded extends GodotPlugin {
     // DEBUG
     // ============================================================
 
-    private void debug(String message) {
-
-        emitSignal(
-                "reward_debug",
-                message
-        );
+    private void log(String message) {
+        emitSignal("reward_debug", message);
     }
 
     private void separator() {
-        debug("==================================================");
+        log("==================================================");
     }
 
     // ============================================================
@@ -120,80 +122,106 @@ public class LamoushiRewarded extends GodotPlugin {
         activity.runOnUiThread(() -> {
 
             separator();
+            log("🚀 LOAD REWARDED START");
 
-            debug("🚀 LOAD REWARDED START");
-
-            rewardGranted = false;
-            rewardScheduled = false;
+            handler.removeCallbacksAndMessages(null);
 
             destroyPop();
             destroyHost();
-
-            debug(
-                    "🌐 AD_SCRIPT_URL = "
-                            + AD_SCRIPT_URL
-            );
-
-            debug(
-                    "🌐 AD_BASE_URL = "
-                            + AD_BASE_URL
-            );
-
-            // ========================================================
-            // COOKIE
-            // ========================================================
 
             CookieManager cookieManager =
                     CookieManager.getInstance();
 
             cookieManager.setAcceptCookie(true);
 
-            debug("🍪 AcceptCookie = true");
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                cookieManager.setAcceptThirdPartyCookies(
+                        null,
+                        true
+                );
+            }
 
-            // ========================================================
+            log("🍪 Cookies enabled");
+
+            // ----------------------------------------------------
+            // HOST CONTAINER
+            // ----------------------------------------------------
+
+            hostContainer =
+                    new FrameLayout(activity);
+
+            hostContainer.setBackgroundColor(
+                    Color.rgb(30, 30, 30)
+            );
+
+            // ----------------------------------------------------
             // HOST WEBVIEW
-            // ========================================================
+            // ----------------------------------------------------
 
             hostWebView =
                     new WebView(activity);
 
-            WebSettings settings =
-                    hostWebView.getSettings();
-
-            settings.setJavaScriptEnabled(true);
-            settings.setDomStorageEnabled(true);
-
-            settings.setSupportMultipleWindows(true);
-            settings.setJavaScriptCanOpenWindowsAutomatically(true);
-
-            settings.setAllowFileAccess(true);
-            settings.setAllowContentAccess(true);
-
-            if (Build.VERSION.SDK_INT >=
-                    Build.VERSION_CODES.LOLLIPOP) {
-
-                settings.setMixedContentMode(
-                        WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                );
-
-                cookieManager.setAcceptThirdPartyCookies(
-                        hostWebView,
-                        true
-                );
-
-                debug(
-                        "🍪 Third-party cookies = true"
-                );
-            }
-
-            debug(
-                    "🌐 UserAgent = "
-                            + settings.getUserAgentString()
+            configureWebView(
+                    hostWebView,
+                    "HOST"
             );
 
-            // ========================================================
-            // HOST CHROME
-            // ========================================================
+            // ----------------------------------------------------
+            // TOUCH DIAGNOSTICS
+            // ----------------------------------------------------
+
+            hostWebView.setOnTouchListener(
+                    new View.OnTouchListener() {
+
+                        @Override
+                        public boolean onTouch(
+                                View v,
+                                MotionEvent event
+                        ) {
+
+                            String action;
+
+                            switch (event.getActionMasked()) {
+
+                                case MotionEvent.ACTION_DOWN:
+                                    action = "DOWN";
+                                    break;
+
+                                case MotionEvent.ACTION_MOVE:
+                                    action = "MOVE";
+                                    break;
+
+                                case MotionEvent.ACTION_UP:
+                                    action = "UP";
+                                    break;
+
+                                case MotionEvent.ACTION_CANCEL:
+                                    action = "CANCEL";
+                                    break;
+
+                                default:
+                                    action = String.valueOf(
+                                            event.getActionMasked()
+                                    );
+                            }
+
+                            log(
+                                    "👆 REAL TOUCH"
+                                            + " | action=" + action
+                                            + " | x=" + event.getX()
+                                            + " | y=" + event.getY()
+                                            + " | rawX=" + event.getRawX()
+                                            + " | rawY=" + event.getRawY()
+                            );
+
+                            return false;
+                        }
+                    }
+            );
+
+            // ----------------------------------------------------
+            // CHROME CLIENT
+            // ----------------------------------------------------
 
             hostWebView.setWebChromeClient(
                     new WebChromeClient() {
@@ -203,7 +231,7 @@ public class LamoushiRewarded extends GodotPlugin {
                                 ConsoleMessage message
                         ) {
 
-                            debug(
+                            log(
                                     "HOST JS"
                                             + " | level="
                                             + message.messageLevel()
@@ -228,25 +256,19 @@ public class LamoushiRewarded extends GodotPlugin {
 
                             separator();
 
-                            debug(
-                                    "🪟 HOST onCreateWindow()"
-                            );
+                            log("🪟 HOST onCreateWindow");
 
-                            debug(
-                                    "🖱 isUserGesture = "
+                            log(
+                                    "🖱 isUserGesture="
                                             + isUserGesture
                             );
 
-                            debug(
-                                    "📦 isDialog = "
+                            log(
+                                    "📦 isDialog="
                                             + isDialog
                             );
 
-                            createPopWebView(
-                                    resultMsg,
-                                    isUserGesture,
-                                    isDialog
-                            );
+                            createPopWebView(resultMsg);
 
                             return true;
                         }
@@ -256,20 +278,18 @@ public class LamoushiRewarded extends GodotPlugin {
                                 WebView window
                         ) {
 
-                            debug(
-                                    "🔴 HOST onCloseWindow()"
+                            log(
+                                    "🛑 HOST onCloseWindow"
                             );
 
-                            if (window == popWebView) {
-                                destroyPop();
-                            }
+                            destroyPop();
                         }
                     }
             );
 
-            // ========================================================
-            // HOST CLIENT
-            // ========================================================
+            // ----------------------------------------------------
+            // WEBVIEW CLIENT
+            // ----------------------------------------------------
 
             hostWebView.setWebViewClient(
                     new WebViewClient() {
@@ -281,9 +301,16 @@ public class LamoushiRewarded extends GodotPlugin {
                                 Bitmap favicon
                         ) {
 
-                            debug(
-                                    "🔵 HOST PAGE START | "
-                                            + url
+                            separator();
+
+                            log(
+                                    "🔵 HOST PAGE START"
+                                            + " | " + url
+                            );
+
+                            inspectSize(
+                                    view,
+                                    "HOST PAGE START"
                             );
                         }
 
@@ -293,23 +320,28 @@ public class LamoushiRewarded extends GodotPlugin {
                                 String url
                         ) {
 
-                            debug(
-                                    "✅ HOST PAGE FINISHED | "
-                                            + url
+                            separator();
+
+                            log(
+                                    "✅ HOST PAGE FINISHED"
+                                            + " | " + url
                             );
 
-                            debug(
-                                    "📍 HOST URL = "
-                                            + url
+                            inspectWebView(
+                                    view,
+                                    "HOST PAGE FINISHED"
+                            );
+
+                            inspectSize(
+                                    view,
+                                    "HOST PAGE FINISHED"
                             );
 
                             installDiagnostics();
 
-                            inspectDocument(
-                                    "INITIAL"
+                            emitSignal(
+                                    "reward_ready"
                             );
-
-                            scheduleDiagnostics();
                         }
 
                         @Override
@@ -319,19 +351,18 @@ public class LamoushiRewarded extends GodotPlugin {
                                 WebResourceError error
                         ) {
 
-                            String url =
-                                    request != null
-                                            ? request.getUrl().toString()
-                                            : "unknown";
-
-                            debug(
+                            log(
                                     "❌ HOST ERROR"
                                             + " | code="
                                             + error.getErrorCode()
                                             + " | description="
                                             + error.getDescription()
                                             + " | url="
-                                            + url
+                                            + (
+                                            request != null
+                                                    ? request.getUrl()
+                                                    : "unknown"
+                                    )
                             );
                         }
 
@@ -342,30 +373,29 @@ public class LamoushiRewarded extends GodotPlugin {
                                 WebResourceResponse response
                         ) {
 
-                            if (request == null ||
-                                    response == null) {
-                                return;
-                            }
+                            if (request != null &&
+                                    response != null) {
 
-                            debug(
-                                    "⚠️ HOST HTTP ERROR"
-                                            + " | status="
-                                            + response.getStatusCode()
-                                            + " | mime="
-                                            + response.getMimeType()
-                                            + " | url="
-                                            + request.getUrl()
-                            );
+                                log(
+                                        "⚠️ HOST HTTP ERROR"
+                                                + " | status="
+                                                + response.getStatusCode()
+                                                + " | mime="
+                                                + response.getMimeType()
+                                                + " | url="
+                                                + request.getUrl()
+                                );
+                            }
                         }
 
                         @Override
                         public void onReceivedSslError(
                                 WebView view,
-                                SslErrorHandler handlerSsl,
+                                SslErrorHandler sslHandler,
                                 SslError error
                         ) {
 
-                            debug(
+                            log(
                                     "🔐 HOST SSL ERROR"
                                             + " | error="
                                             + error.getPrimaryError()
@@ -373,7 +403,7 @@ public class LamoushiRewarded extends GodotPlugin {
                                             + error.getUrl()
                             );
 
-                            handlerSsl.cancel();
+                            sslHandler.cancel();
                         }
 
                         @Override
@@ -384,16 +414,12 @@ public class LamoushiRewarded extends GodotPlugin {
 
                             if (request != null) {
 
-                                debug(
+                                log(
                                         "➡️ HOST NAVIGATION"
-                                                + " | "
+                                                + " | method="
                                                 + request.getMethod()
-                                                + " "
+                                                + " | url="
                                                 + request.getUrl()
-                                                + " | gesture="
-                                                + request.hasGesture()
-                                                + " | main="
-                                                + request.isForMainFrame()
                                 );
                             }
 
@@ -409,7 +435,7 @@ public class LamoushiRewarded extends GodotPlugin {
 
                             if (request != null) {
 
-                                debug(
+                                log(
                                         "🌐 HOST REQUEST"
                                                 + " | "
                                                 + request.getMethod()
@@ -417,71 +443,131 @@ public class LamoushiRewarded extends GodotPlugin {
                                                 + request.getUrl()
                                 );
 
-                                debug(
-                                        "HOST main="
+                                log(
+                                        "HOST mainFrame="
                                                 + request.isForMainFrame()
-                                                + " gesture="
+                                );
+
+                                log(
+                                        "HOST gesture="
                                                 + request.hasGesture()
                                 );
 
-                                logHeaders(
-                                        "HOST",
-                                        request
-                                );
+                                if (request.getRequestHeaders()
+                                        != null) {
+
+                                    for (String key :
+                                            request.getRequestHeaders()
+                                                    .keySet()) {
+
+                                        String value =
+                                                request.getRequestHeaders()
+                                                        .get(key);
+
+                                        log(
+                                                "HOST HEADER"
+                                                        + " | "
+                                                        + key
+                                                        + "="
+                                                        + value
+                                        );
+                                    }
+                                }
                             }
 
-                            // مهم:
-                            // لا نعترض الطلب.
-                            // WebView يتولى التحميل بنفسه.
-
-                            return super
-                                    .shouldInterceptRequest(
-                                            view,
-                                            request
-                                    );
+                            return super.shouldInterceptRequest(
+                                    view,
+                                    request
+                            );
                         }
                     }
             );
 
-            // ========================================================
+            // ----------------------------------------------------
             // HTML
-            // ========================================================
+            // ----------------------------------------------------
 
             String html =
                     "<!DOCTYPE html>"
                             + "<html>"
                             + "<head>"
+
                             + "<meta name='viewport' "
-                            + "content='width=device-width,initial-scale=1.0'>"
+                            + "content='width=device-width,"
+                            + "initial-scale=1.0,"
+                            + "maximum-scale=1.0,"
+                            + "user-scalable=no'>"
 
                             + "<style>"
+
                             + "html,body{"
                             + "margin:0;"
                             + "padding:0;"
                             + "width:100%;"
                             + "height:100%;"
-                            + "background:transparent;"
-                            + "overflow:hidden;"
+                            + "min-height:100%;"
+                            + "background:#222;"
+                            + "overflow:auto;"
                             + "}"
-                            + "#trigger{"
+
+                            + "#debugTitle{"
                             + "position:fixed;"
-                            + "left:0;"
                             + "top:0;"
-                            + "width:100%;"
-                            + "height:100%;"
+                            + "left:0;"
+                            + "right:0;"
+                            + "height:32px;"
+                            + "line-height:32px;"
+                            + "z-index:999999;"
+                            + "background:#000;"
+                            + "color:#fff;"
+                            + "font-size:12px;"
+                            + "padding-left:8px;"
                             + "}"
+
+                            + "#trigger{"
+                            + "position:relative;"
+                            + "display:block;"
+                            + "width:100%;"
+                            + "height:300px;"
+                            + "min-height:300px;"
+                            + "background:rgba(255,255,255,0.08);"
+                            + "border:2px solid rgba(255,255,255,0.25);"
+                            + "z-index:999998;"
+                            + "}"
+
                             + "</style>"
 
                             + "</head>"
 
                             + "<body>"
 
-                            + "<div id='trigger'></div>"
+                            + "<div id='debugTitle'>"
+                            + "LAMOUSHI REWARDED DEBUG"
+                            + "</div>"
+
+                            + "<div id='trigger'>"
+                            + "</div>"
 
                             + "<script>"
+
                             + "console.log('🔬 HTML loaded');"
-                            + "console.log('trigger موجود = ' + "
-                            + "!!document.getElementById('trigger'));"
+
+                            + "console.log("
+                            + "'viewport=' + "
+                            + "window.innerWidth + 'x' + "
+                            + "window.innerHeight"
+                            + ");"
+
+                            + "console.log("
+                            + "'devicePixelRatio=' + "
+                            + "window.devicePixelRatio"
+                            + ");"
+
+                            + "console.log("
+                            + "'trigger exists=' + "
+                            + "!!document.getElementById('trigger')"
+                            + ");"
+
                             + "</script>"
 
                             + "<script src='"
@@ -489,20 +575,19 @@ public class LamoushiRewarded extends GodotPlugin {
                             + "'></script>"
 
                             + "</body>"
+
                             + "</html>";
 
-            debug(
-                    "📄 HTML الإعلان تم إنشاؤه"
-            );
+            log("📄 HTML CREATED");
 
-            debug(
-                    "📡 جاري طلب سكربت الإعلان: "
+            log(
+                    "📡 Loading ad script:"
                             + AD_SCRIPT_URL
             );
 
-            // ========================================================
-            // LOAD DATA
-            // ========================================================
+            // ----------------------------------------------------
+            // LOAD HTML
+            // ----------------------------------------------------
 
             hostWebView.loadDataWithBaseURL(
                     AD_BASE_URL,
@@ -512,448 +597,379 @@ public class LamoushiRewarded extends GodotPlugin {
                     null
             );
 
-            // ========================================================
-            // HOST SIZE
-            // ========================================================
+            // ----------------------------------------------------
+            // FULL SCREEN
+            // ----------------------------------------------------
 
             FrameLayout.LayoutParams params =
                     new FrameLayout.LayoutParams(
-                            1,
-                            1
+                            FrameLayout.LayoutParams.MATCH_PARENT,
+                            FrameLayout.LayoutParams.MATCH_PARENT
                     );
 
-            activity.addContentView(
+            hostContainer.addView(
                     hostWebView,
                     params
             );
 
-            debug(
-                    "✅ HOST WebView تمت إضافته إلى Activity"
+            activity.addContentView(
+                    hostContainer,
+                    params
             );
 
-            debug(
-                    "HOST physical size = 1x1"
+            hostWebView.bringToFront();
+
+            hostWebView.requestLayout();
+
+            log("👁 HOST ADDED FULL SCREEN");
+
+            inspectSize(
+                    hostWebView,
+                    "HOST AFTER ADD"
             );
+
+            separator();
         });
     }
 
     // ============================================================
-    // INSTALL JAVASCRIPT DIAGNOSTICS
+    // WEBVIEW CONFIG
     // ============================================================
 
-    private void installDiagnostics() {
-
-        if (hostWebView == null) {
-            return;
-        }
-
-        debug(
-                "🔬 تثبيت JavaScript diagnostics"
-        );
-
-        String js =
-                "(function(){"
-
-                        // =================================================
-                        // Prevent duplicate installation
-                        // =================================================
-
-                        + "if(window.__LAMOUSHI_DIAG){"
-                        + "console.log('🔬 diagnostics already installed');"
-                        + "return 'already';"
-                        + "}"
-                        + "window.__LAMOUSHI_DIAG=true;"
-
-                        // =================================================
-                        // Basic info
-                        // =================================================
-
-                        + "console.log('🔬 diagnostics installed');"
-                        + "console.log('current href=' + location.href);"
-
-                        // =================================================
-                        // Window open
-                        // =================================================
-
-                        + "try{"
-                        + "var oldOpen=window.open;"
-                        + "window.open=function(){"
-                        + "console.log('🚨 WINDOW.OPEN CALLED');"
-                        + "console.log('window.open args=' + arguments.length);"
-                        + "try{"
-                        + "console.log('window.open url=' + arguments[0]);"
-                        + "}catch(e){}"
-                        + "try{"
-                        + "console.log('window.open target=' + arguments[1]);"
-                        + "}catch(e){}"
-                        + "try{"
-                        + "console.log('window.open features=' + arguments[2]);"
-                        + "}catch(e){}"
-                        + "var result=oldOpen.apply(this,arguments);"
-                        + "console.log('🚨 WINDOW.OPEN RESULT=' + result);"
-                        + "return result;"
-                        + "};"
-                        + "}catch(e){"
-                        + "console.log('❌ window.open hook error=' + e);"
-                        + "}"
-
-                        // =================================================
-                        // Errors
-                        // =================================================
-
-                        + "window.addEventListener('error',function(e){"
-                        + "console.log('🚨 JS ERROR');"
-                        + "console.log('message=' + e.message);"
-                        + "console.log('source=' + e.filename);"
-                        + "console.log('line=' + e.lineno);"
-                        + "console.log('column=' + e.colno);"
-                        + "},true);"
-
-                        + "window.addEventListener("
-                        + "'unhandledrejection',function(e){"
-                        + "console.log('🚨 UNHANDLED PROMISE REJECTION');"
-                        + "try{console.log('reason=' + e.reason);}catch(x){}"
-                        + "},true);"
-
-                        // =================================================
-                        // Event diagnostics
-                        // =================================================
-
-                        + "['click','mousedown','mouseup',"
-                        + "'pointerdown','pointerup','touchstart','touchend']"
-                        + ".forEach(function(type){"
-                        + "document.addEventListener(type,function(e){"
-                        + "console.log("
-                        + "'🖱 EVENT ' + type"
-                        + " + ' target=' + "
-                        + "(e.target && e.target.tagName)"
-                        + " + ' trusted=' + e.isTrusted"
-                        + " + ' defaultPrevented=' + e.defaultPrevented"
-                        + " + ' x=' + e.clientX"
-                        + " + ' y=' + e.clientY"
-                        + ");"
-                        + "},true);"
-                        + "});"
-
-                        // =================================================
-                        // Visibility
-                        // =================================================
-
-                        + "document.addEventListener("
-                        + "'visibilitychange',function(){"
-                        + "console.log("
-                        + "'👁 visibility=' + document.visibilityState"
-                        + ");"
-                        + "});"
-
-                        // =================================================
-                        // Focus
-                        // =================================================
-
-                        + "window.addEventListener('focus',function(){"
-                        + "console.log('🎯 WINDOW FOCUS');"
-                        + "});"
-
-                        + "window.addEventListener('blur',function(){"
-                        + "console.log('🎯 WINDOW BLUR');"
-                        + "});"
-
-                        // =================================================
-                        // History
-                        // =================================================
-
-                        + "try{"
-
-                        + "var oldPush=history.pushState;"
-                        + "history.pushState=function(){"
-                        + "console.log('🧭 history.pushState');"
-                        + "try{console.log('url=' + arguments[2]);}catch(e){}"
-                        + "return oldPush.apply(this,arguments);"
-                        + "};"
-
-                        + "var oldReplace=history.replaceState;"
-                        + "history.replaceState=function(){"
-                        + "console.log('🧭 history.replaceState');"
-                        + "try{console.log('url=' + arguments[2]);}catch(e){}"
-                        + "return oldReplace.apply(this,arguments);"
-                        + "};"
-
-                        + "}catch(e){"
-                        + "console.log('❌ history hook error=' + e);"
-                        + "}"
-
-                        // =================================================
-                        // Location assignment diagnostics
-                        // =================================================
-
-                        + "window.addEventListener('hashchange',function(){"
-                        + "console.log('🧭 HASH CHANGE=' + location.href);"
-                        + "});"
-
-                        // =================================================
-                        // createElement
-                        // =================================================
-
-                        + "try{"
-
-                        + "var oldCreate=document.createElement;"
-
-                        + "document.createElement=function(tag){"
-
-                        + "var el=oldCreate.call(document,tag);"
-
-                        + "console.log("
-                        + "'🧩 createElement(' + "
-                        + "String(tag).toUpperCase() + ')'"
-                        + ");"
-
-                        + "return el;"
-                        + "};"
-
-                        + "}catch(e){"
-                        + "console.log('❌ createElement hook error=' + e);"
-                        + "}"
-
-                        // =================================================
-                        // appendChild
-                        // =================================================
-
-                        + "try{"
-
-                        + "var oldAppend=Node.prototype.appendChild;"
-
-                        + "Node.prototype.appendChild=function(node){"
-
-                        + "try{"
-
-                        + "console.log("
-                        + "'🧩 appendChild tag=' + "
-                        + "(node && node.tagName)"
-                        + ");"
-
-                        + "if(node && node.tagName){"
-
-                        + "var tag=node.tagName.toLowerCase();"
-
-                        + "if(tag==='iframe' || tag==='a' || "
-                        + "tag==='script' || tag==='form'){"
-
-                        + "console.log("
-                        + "'🚨 IMPORTANT ELEMENT APPENDED tag=' + tag"
-                        + ");"
-
-                        + "try{console.log('src=' + node.src);}catch(e){}"
-                        + "try{console.log('href=' + node.href);}catch(e){}"
-                        + "try{console.log('target=' + node.target);}catch(e){}"
-                        + "try{console.log('action=' + node.action);}catch(e){}"
-
-                        + "}"
-                        + "}"
-
-                        + "}catch(e){"
-                        + "console.log('❌ append inspection=' + e);"
-                        + "}"
-
-                        + "return oldAppend.call(this,node);"
-                        + "};"
-
-                        + "}catch(e){"
-                        + "console.log('❌ append hook error=' + e);"
-                        + "}"
-
-                        // =================================================
-                        // Mutation observer
-                        // =================================================
-
-                        + "try{"
-
-                        + "var observer=new MutationObserver(function(list){"
-
-                        + "console.log("
-                        + "'🔄 DOM MUTATION count=' + list.length"
-                        + ");"
-
-                        + "list.forEach(function(m){"
-
-                        + "if(m.type==='childList'){"
-
-                        + "console.log("
-                        + "'🔄 mutation childList added='"
-                        + "+m.addedNodes.length"
-                        + "+' removed='"
-                        + "+m.removedNodes.length"
-                        + ");"
-
-                        + "for(var i=0;i<m.addedNodes.length;i++){"
-
-                        + "var n=m.addedNodes[i];"
-
-                        + "if(n && n.tagName){"
-
-                        + "console.log("
-                        + "'🧩 MUTATION ADDED='"
-                        + "+n.tagName"
-                        + ");"
-
-                        + "try{console.log('src=' + n.src);}catch(e){}"
-                        + "try{console.log('href=' + n.href);}catch(e){}"
-
-                        + "}"
-
-                        + "}"
-
-                        + "}"
-
-                        + "});"
-
-                        + "});"
-
-                        + "observer.observe(document.documentElement,{"
-                        + "subtree:true,"
-                        + "childList:true,"
-                        + "attributes:true"
-                        + "});"
-
-                        + "}catch(e){"
-                        + "console.log('❌ MutationObserver error=' + e);"
-                        + "}"
-
-                        + "return 'installed';"
-
-                        + "})();";
-
-        hostWebView.evaluateJavascript(
-                js,
-                value -> debug(
-                        "🔬 Diagnostics install result = "
-                                + value
-                )
-        );
-    }
-
-    // ============================================================
-    // DOCUMENT INSPECTION
-    // ============================================================
-
-    private void inspectDocument(
-            String label
+    private void configureWebView(
+            WebView webView,
+            String name
     ) {
 
-        if (hostWebView == null) {
-            return;
+        WebSettings settings =
+                webView.getSettings();
+
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+
+        settings.setDatabaseEnabled(true);
+
+        settings.setSupportMultipleWindows(true);
+        settings.setJavaScriptCanOpenWindowsAutomatically(true);
+
+        settings.setLoadWithOverviewMode(false);
+        settings.setUseWideViewPort(false);
+
+        settings.setBuiltInZoomControls(false);
+        settings.setDisplayZoomControls(false);
+
+        settings.setAllowFileAccess(true);
+        settings.setAllowContentAccess(true);
+
+        if (Build.VERSION.SDK_INT >=
+                Build.VERSION_CODES.LOLLIPOP) {
+
+            settings.setMixedContentMode(
+                    WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            );
+
+            CookieManager
+                    .getInstance()
+                    .setAcceptThirdPartyCookies(
+                            webView,
+                            true
+                    );
         }
 
-        String js =
-                "(function(){"
-                        + "function rect(el){"
-                        + "if(!el)return null;"
-                        + "var r=el.getBoundingClientRect();"
-                        + "return {"
-                        + "x:r.x,y:r.y,"
-                        + "width:r.width,height:r.height,"
-                        + "top:r.top,right:r.right,"
-                        + "bottom:r.bottom,left:r.left"
-                        + "};"
-                        + "}"
+        webView.setBackgroundColor(
+                Color.rgb(30, 30, 30)
+        );
 
-                        + "var t=document.getElementById('trigger');"
+        webView.setVisibility(
+                View.VISIBLE
+        );
 
-                        + "return JSON.stringify({"
+        webView.setAlpha(1.0f);
 
-                        + "href:location.href,"
-                        + "origin:location.origin,"
-                        + "readyState:document.readyState,"
-                        + "title:document.title,"
-                        + "visibility:document.visibilityState,"
-                        + "hasFocus:document.hasFocus(),"
+        webView.setLayerType(
+                View.LAYER_TYPE_HARDWARE,
+                null
+        );
 
-                        + "bodyLength:"
-                        + "(document.body ? document.body.innerHTML.length : -1),"
-
-                        + "elementCount:"
-                        + "document.getElementsByTagName('*').length,"
-
-                        + "triggerExists:!!t,"
-                        + "triggerTag:t?t.tagName:null,"
-                        + "triggerId:t?t.id:null,"
-                        + "triggerClass:t?t.className:null,"
-                        + "triggerRect:rect(t),"
-
-                        + "iframes:"
-                        + "document.getElementsByTagName('iframe').length,"
-
-                        + "links:"
-                        + "document.getElementsByTagName('a').length,"
-
-                        + "buttons:"
-                        + "document.getElementsByTagName('button').length,"
-
-                        + "forms:"
-                        + "document.getElementsByTagName('form').length,"
-
-                        + "inputs:"
-                        + "document.getElementsByTagName('input').length,"
-
-                        + "scripts:"
-                        + "document.getElementsByTagName('script').length,"
-
-                        + "images:"
-                        + "document.getElementsByTagName('img').length,"
-
-                        + "bodyText:"
-                        + "document.body ? document.body.innerText : ''"
-
-                        + "});"
-
-                        + "})();";
-
-        hostWebView.evaluateJavascript(
-                js,
-                value -> {
-
-                    debug(
-                            "🔬 "
-                                    + label
-                                    + " DOCUMENT INSPECTION = "
-                                    + value
-                    );
-                }
+        log(
+                "⚙️ "
+                        + name
+                        + " CONFIGURED"
         );
     }
 
     // ============================================================
-    // DIAGNOSTIC TIMERS
+    // POP WEBVIEW
     // ============================================================
 
-    private void scheduleDiagnostics() {
+    private void createPopWebView(
+            android.os.Message resultMsg
+    ) {
 
-        handler.postDelayed(
-                () -> inspectDocument(
-                        "POST-LOAD +1 SEC"
-                ),
-                1000
-        );
+        activity.runOnUiThread(() -> {
 
-        handler.postDelayed(
-                () -> inspectDocument(
-                        "POST-LOAD +3 SEC"
-                ),
-                3000
-        );
+            destroyPop();
 
-        handler.postDelayed(
-                () -> inspectDocument(
-                        "POST-LOAD +7 SEC"
-                ),
-                7000
-        );
+            separator();
 
-        handler.postDelayed(
-                () -> inspectDocument(
-                        "POST-LOAD +12 SEC"
-                ),
-                12000
-        );
+            log("🚀 CREATE POP WEBVIEW");
+
+            popContainer =
+                    new FrameLayout(activity);
+
+            popContainer.setBackgroundColor(
+                    Color.BLACK
+            );
+
+            popWebView =
+                    new WebView(activity);
+
+            configureWebView(
+                    popWebView,
+                    "POP"
+            );
+
+            popWebView.setWebChromeClient(
+                    new WebChromeClient() {
+
+                        @Override
+                        public boolean onConsoleMessage(
+                                ConsoleMessage message
+                        ) {
+
+                            log(
+                                    "POP JS"
+                                            + " | level="
+                                            + message.messageLevel()
+                                            + " | message="
+                                            + message.message()
+                                            + " | source="
+                                            + message.sourceId()
+                                            + " | line="
+                                            + message.lineNumber()
+                            );
+
+                            return true;
+                        }
+
+                        @Override
+                        public boolean onCreateWindow(
+                                WebView view,
+                                boolean isDialog,
+                                boolean isUserGesture,
+                                android.os.Message message
+                        ) {
+
+                            log(
+                                    "🪟 POP requested another window"
+                            );
+
+                            log(
+                                    "POP gesture="
+                                            + isUserGesture
+                            );
+
+                            return false;
+                        }
+
+                        @Override
+                        public void onCloseWindow(
+                                WebView window
+                        ) {
+
+                            log(
+                                    "🛑 POP CLOSE WINDOW"
+                            );
+
+                            destroyPop();
+                        }
+                    }
+            );
+
+            popWebView.setWebViewClient(
+                    new WebViewClient() {
+
+                        @Override
+                        public void onPageStarted(
+                                WebView view,
+                                String url,
+                                Bitmap favicon
+                        ) {
+
+                            separator();
+
+                            log(
+                                    "🔵 POP PAGE START"
+                                            + " | "
+                                            + url
+                            );
+
+                            inspectSize(
+                                    view,
+                                    "POP PAGE START"
+                            );
+                        }
+
+                        @Override
+                        public void onPageFinished(
+                                WebView view,
+                                String url
+                        ) {
+
+                            separator();
+
+                            log(
+                                    "✅ POP PAGE FINISHED"
+                                            + " | "
+                                            + url
+                            );
+
+                            inspectWebView(
+                                    view,
+                                    "POP PAGE FINISHED"
+                            );
+
+                            inspectSize(
+                                    view,
+                                    "POP PAGE FINISHED"
+                            );
+
+                            installPopDiagnostics();
+                        }
+
+                        @Override
+                        public boolean shouldOverrideUrlLoading(
+                                WebView view,
+                                WebResourceRequest request
+                        ) {
+
+                            if (request != null) {
+
+                                log(
+                                        "➡️ POP NAVIGATION"
+                                                + " | "
+                                                + request.getUrl()
+                                );
+                            }
+
+                            return false;
+                        }
+
+                        @Override
+                        public void onReceivedError(
+                                WebView view,
+                                WebResourceRequest request,
+                                WebResourceError error
+                        ) {
+
+                            log(
+                                    "❌ POP ERROR"
+                                            + " | code="
+                                            + error.getErrorCode()
+                                            + " | description="
+                                            + error.getDescription()
+                            );
+                        }
+
+                        @Override
+                        public void onReceivedHttpError(
+                                WebView view,
+                                WebResourceRequest request,
+                                WebResourceResponse response
+                        ) {
+
+                            if (response != null &&
+                                    request != null) {
+
+                                log(
+                                        "⚠️ POP HTTP ERROR"
+                                                + " | status="
+                                                + response.getStatusCode()
+                                                + " | url="
+                                                + request.getUrl()
+                                );
+                            }
+                        }
+
+                        @Override
+                        public WebResourceResponse
+                        shouldInterceptRequest(
+                                WebView view,
+                                WebResourceRequest request
+                        ) {
+
+                            if (request != null) {
+
+                                log(
+                                        "🌐 POP REQUEST"
+                                                + " | "
+                                                + request.getMethod()
+                                                + " "
+                                                + request.getUrl()
+                                );
+
+                                log(
+                                        "POP mainFrame="
+                                                + request.isForMainFrame()
+                                );
+
+                                log(
+                                        "POP gesture="
+                                                + request.hasGesture()
+                                );
+                            }
+
+                            return super.shouldInterceptRequest(
+                                    view,
+                                    request
+                            );
+                        }
+                    }
+            );
+
+            FrameLayout.LayoutParams params =
+                    new FrameLayout.LayoutParams(
+                            FrameLayout.LayoutParams.MATCH_PARENT,
+                            FrameLayout.LayoutParams.MATCH_PARENT
+                    );
+
+            popContainer.addView(
+                    popWebView,
+                    params
+            );
+
+            activity.addContentView(
+                    popContainer,
+                    params
+            );
+
+            popWebView.bringToFront();
+
+            popWebView.requestLayout();
+
+            inspectSize(
+                    popWebView,
+                    "POP AFTER ADD"
+            );
+
+            WebView.WebViewTransport transport =
+                    (WebView.WebViewTransport)
+                            resultMsg.obj;
+
+            transport.setWebView(
+                    popWebView
+            );
+
+            resultMsg.sendToTarget();
+
+            log(
+                    "✅ POP TRANSPORT SENT"
+            );
+
+            emitSignal(
+                    "reward_ad_opened"
+            );
+        });
     }
 
     // ============================================================
@@ -967,586 +983,517 @@ public class LamoushiRewarded extends GodotPlugin {
 
             separator();
 
-            debug(
-                    "🎯 showRewardedAd() بدأ"
-            );
+            log("🎯 SHOW REWARDED");
 
             if (hostWebView == null) {
 
-                debug(
-                        "❌ HOST WebView = null"
+                log(
+                        "❌ HOST WebView NULL"
                 );
 
                 return;
             }
 
-            // --------------------------------------------------------
-            // PRE CLICK
-            // --------------------------------------------------------
-
-            inspectDocument(
-                    "PRE-CLICK"
+            inspectWebView(
+                    hostWebView,
+                    "PRE REAL TOUCH"
             );
 
-            String js =
-                    "(function(){"
+            inspectSize(
+                    hostWebView,
+                    "PRE REAL TOUCH"
+            );
 
-                            + "var el="
-                            + "document.getElementById('trigger');"
+            log(
+                    "👆 الآن يجب إجراء نقرة حقيقية داخل الإعلان"
+            );
 
-                            + "if(!el){"
+            handler.postDelayed(
+                    () -> inspectWebView(
+                            hostWebView,
+                            "AFTER 1 SEC
+                    ),
+                    DEBUG_DELAY_1
+            );
 
-                            + "console.log("
-                            + "'❌ trigger غير موجود'"
-                            + ");"
+            handler.postDelayed(
+                    () -> {
 
-                            + "return false;"
-
-                            + "}"
-
-                            + "console.log("
-                            + "'trigger موجود — dispatching click'"
-                            + ");"
-
-                            // ------------------------------------------
-                            // mouse down
-                            // ------------------------------------------
-
-                            + "try{"
-
-                            + "el.dispatchEvent("
-                            + "new MouseEvent('mousedown',{"
-                            + "bubbles:true,"
-                            + "cancelable:true,"
-                            + "view:window,"
-                            + "clientX:1,"
-                            + "clientY:1"
-                            + "})"
-                            + ");"
-
-                            + "}catch(e){"
-                            + "console.log('mousedown error=' + e);"
-                            + "}"
-
-                            // ------------------------------------------
-                            // mouse up
-                            // ------------------------------------------
-
-                            + "try{"
-
-                            + "el.dispatchEvent("
-                            + "new MouseEvent('mouseup',{"
-                            + "bubbles:true,"
-                            + "cancelable:true,"
-                            + "view:window,"
-                            + "clientX:1,"
-                            + "clientY:1"
-                            + "})"
-                            + ");"
-
-                            + "}catch(e){"
-                            + "console.log('mouseup error=' + e);"
-                            + "}"
-
-                            // ------------------------------------------
-                            // click
-                            // ------------------------------------------
-
-                            + "var ev="
-                            + "new MouseEvent('click',{"
-                            + "bubbles:true,"
-                            + "cancelable:true,"
-                            + "view:window,"
-                            + "clientX:1,"
-                            + "clientY:1"
-                            + "});"
-
-                            + "var result="
-                            + "el.dispatchEvent(ev);"
-
-                            + "console.log("
-                            + "'dispatchEvent result=' + result"
-                            + ");"
-
-                            + "return result;"
-
-                            + "})();";
-
-            hostWebView.evaluateJavascript(
-                    js,
-                    value -> {
-
-                        debug(
-                                "👆 CLICK DISPATCH RESULT = "
-                                        + value
+                        inspectWebView(
+                                hostWebView,
+                                "AFTER 3 SEC"
                         );
 
-                        separator();
-
-                        debug(
-                                "🔬 POST-CLICK INSPECTION START"
+                        inspectSize(
+                                hostWebView,
+                                "AFTER 3 SEC"
                         );
 
-                        inspectDocument(
-                                "POST-CLICK"
+                        if (popWebView != null) {
+
+                            inspectWebView(
+                                    popWebView,
+                                    "POP AFTER 3 SEC"
+                            );
+
+                            inspectSize(
+                                    popWebView,
+                                    "POP AFTER 3 SEC"
+                            );
+                        }
+
+                    },
+                    DEBUG_DELAY_3
+            );
+
+            handler.postDelayed(
+                    () -> {
+
+                        inspectWebView(
+                                hostWebView,
+                                "AFTER 5 SEC"
                         );
 
-                        handler.postDelayed(
-                                () -> inspectDocument(
-                                        "POST-CLICK +3 SEC"
-                                ),
-                                3000
+                        if (popWebView != null) {
+
+                            inspectWebView(
+                                    popWebView,
+                                    "POP AFTER 5 SEC"
+                            );
+                        }
+
+                    },
+                    DEBUG_DELAY_5
+            );
+
+            handler.postDelayed(
+                    () -> {
+
+                        inspectWebView(
+                                hostWebView,
+                                "AFTER 10 SEC"
                         );
 
-                        handler.postDelayed(
-                                () -> inspectDocument(
-                                        "POST-CLICK +7 SEC"
-                                ),
-                                7000
-                        );
+                        if (popWebView != null) {
 
-                        handler.postDelayed(
-                                () -> inspectDocument(
-                                        "POST-CLICK +12 SEC"
-                                ),
-                                12000
-                        );
+                            inspectWebView(
+                                    popWebView,
+                                    "POP AFTER 10 SEC"
+                            );
+                        }
 
-                        debug(
-                                "🔬 POST-CLICK INSPECTION SCHEDULED"
-                        );
-                    }
+                    },
+                    DEBUG_DELAY_10
             );
         });
     }
 
     // ============================================================
-    // CREATE POP WEBVIEW
+    // DOM INSPECTION
     // ============================================================
 
-    private void createPopWebView(
-            android.os.Message resultMsg,
-            boolean isUserGesture,
-            boolean isDialog
+    private void inspectWebView(
+            WebView webView,
+            String label
     ) {
 
-        destroyPop();
+        if (webView == null) {
 
-        popWebView =
-                new WebView(activity);
-
-        WebSettings settings =
-                popWebView.getSettings();
-
-        settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
-
-        settings.setSupportMultipleWindows(true);
-        settings.setJavaScriptCanOpenWindowsAutomatically(
-                true
-        );
-
-        settings.setAllowFileAccess(true);
-        settings.setAllowContentAccess(true);
-
-        if (Build.VERSION.SDK_INT >=
-                Build.VERSION_CODES.LOLLIPOP) {
-
-            settings.setMixedContentMode(
-                    WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-            );
-
-            CookieManager.getInstance()
-                    .setAcceptThirdPartyCookies(
-                            popWebView,
-                            true
-                    );
-        }
-
-        debug(
-                "🪟 Creating POP WebView"
-        );
-
-        debug(
-                "POP isUserGesture = "
-                        + isUserGesture
-        );
-
-        debug(
-                "POP isDialog = "
-                        + isDialog
-        );
-
-        // ========================================================
-        // POP CHROME
-        // ========================================================
-
-        popWebView.setWebChromeClient(
-                new WebChromeClient() {
-
-                    @Override
-                    public boolean onConsoleMessage(
-                            ConsoleMessage message
-                    ) {
-
-                        debug(
-                                "POP JS"
-                                        + " | level="
-                                        + message.messageLevel()
-                                        + " | message="
-                                        + message.message()
-                                        + " | source="
-                                        + message.sourceId()
-                                        + " | line="
-                                        + message.lineNumber()
-                        );
-
-                        return true;
-                    }
-
-                    @Override
-                    public boolean onCreateWindow(
-                            WebView view,
-                            boolean dialog,
-                            boolean gesture,
-                            android.os.Message msg
-                    ) {
-
-                        debug(
-                                "🪟 POP onCreateWindow()"
-                        );
-
-                        debug(
-                                "POP gesture="
-                                        + gesture
-                        );
-
-                        debug(
-                                "POP dialog="
-                                        + dialog
-                        );
-
-                        return super.onCreateWindow(
-                                view,
-                                dialog,
-                                gesture,
-                                msg
-                        );
-                    }
-
-                    @Override
-                    public void onCloseWindow(
-                            WebView window
-                    ) {
-
-                        debug(
-                                "🔴 POP onCloseWindow()"
-                        );
-
-                        if (window == popWebView) {
-                            destroyPop();
-                        }
-                    }
-                }
-        );
-
-        // ========================================================
-        // POP CLIENT
-        // ========================================================
-
-        popWebView.setWebViewClient(
-                new WebViewClient() {
-
-                    @Override
-                    public void onPageStarted(
-                            WebView view,
-                            String url,
-                            Bitmap favicon
-                    ) {
-
-                        debug(
-                                "🔵 POP PAGE START | "
-                                        + url
-                        );
-                    }
-
-                    @Override
-                    public void onPageFinished(
-                            WebView view,
-                            String url
-                    ) {
-
-                        debug(
-                                "✅ POP PAGE FINISHED | "
-                                        + url
-                        );
-                    }
-
-                    @Override
-                    public void onReceivedError(
-                            WebView view,
-                            WebResourceRequest request,
-                            WebResourceError error
-                    ) {
-
-                        if (request == null) {
-                            return;
-                        }
-
-                        if (!request.isForMainFrame()) {
-                            return;
-                        }
-
-                        debug(
-                                "❌ POP ERROR"
-                                        + " | code="
-                                        + error.getErrorCode()
-                                        + " | description="
-                                        + error.getDescription()
-                                        + " | url="
-                                        + request.getUrl()
-                        );
-                    }
-
-                    @Override
-                    public void onReceivedHttpError(
-                            WebView view,
-                            WebResourceRequest request,
-                            WebResourceResponse response
-                    ) {
-
-                        if (request == null ||
-                                response == null) {
-                            return;
-                        }
-
-                        debug(
-                                "⚠️ POP HTTP ERROR"
-                                        + " | status="
-                                        + response.getStatusCode()
-                                        + " | mime="
-                                        + response.getMimeType()
-                                        + " | url="
-                                        + request.getUrl()
-                        );
-                    }
-
-                    @Override
-                    public void onReceivedSslError(
-                            WebView view,
-                            SslErrorHandler handlerSsl,
-                            SslError error
-                    ) {
-
-                        debug(
-                                "🔐 POP SSL ERROR"
-                                        + " | error="
-                                        + error.getPrimaryError()
-                                        + " | url="
-                                        + error.getUrl()
-                        );
-
-                        handlerSsl.cancel();
-                    }
-
-                    @Override
-                    public boolean shouldOverrideUrlLoading(
-                            WebView view,
-                            WebResourceRequest request
-                    ) {
-
-                        if (request != null) {
-
-                            debug(
-                                    "➡️ POP NAVIGATION"
-                                            + " | "
-                                            + request.getMethod()
-                                            + " "
-                                            + request.getUrl()
-                                            + " | gesture="
-                                            + request.hasGesture()
-                                            + " | main="
-                                            + request.isForMainFrame()
-                            );
-                        }
-
-                        return false;
-                    }
-
-                    @Override
-                    public WebResourceResponse
-                    shouldInterceptRequest(
-                            WebView view,
-                            WebResourceRequest request
-                    ) {
-
-                        if (request != null) {
-
-                            debug(
-                                    "🌐 POP REQUEST"
-                                            + " | "
-                                            + request.getMethod()
-                                            + " "
-                                            + request.getUrl()
-                            );
-                        }
-
-                        return super
-                                .shouldInterceptRequest(
-                                        view,
-                                        request
-                                );
-                    }
-                }
-        );
-
-        // ========================================================
-        // ADD POP
-        // ========================================================
-
-        FrameLayout.LayoutParams params =
-                new FrameLayout.LayoutParams(
-                        1,
-                        1
-                );
-
-        activity.addContentView(
-                popWebView,
-                params
-        );
-
-        // ========================================================
-        // TRANSPORT
-        // ========================================================
-
-        if (resultMsg == null ||
-                resultMsg.obj == null) {
-
-            debug(
-                    "❌ window.open resultMsg/obj = null"
+            log(
+                    "🔬 "
+                            + label
+                            + " | NULL"
             );
 
             return;
         }
 
-        WebView.WebViewTransport transport =
-                (WebView.WebViewTransport)
-                        resultMsg.obj;
+        String js =
+                "(function(){"
 
-        transport.setWebView(
-                popWebView
-        );
+                        + "var t=document.getElementById('trigger');"
 
-        resultMsg.sendToTarget();
+                        + "var b=document.body;"
 
-        debug(
-                "✅ window.open() WebViewTransport delivered"
-        );
+                        + "var d=document.documentElement;"
 
-        emitSignal(
-                "reward_ad_opened"
-        );
+                        + "var r=t?"
+                        + "t.getBoundingClientRect():null;"
 
-        scheduleReward();
-    }
+                        + "return JSON.stringify({"
 
-    // ============================================================
-    // REQUEST HEADERS
-    // ============================================================
+                        + "href:location.href,"
 
-    private void logHeaders(
-            String prefix,
-            WebResourceRequest request
-    ) {
+                        + "origin:location.origin,"
 
-        if (request == null) {
-            return;
-        }
+                        + "readyState:document.readyState,"
 
-        try {
+                        + "visibility:"
+                        + "getComputedStyle(document.body).visibility,"
 
-            java.util.Map<String, String> headers =
-                    request.getRequestHeaders();
+                        + "display:"
+                        + "getComputedStyle(document.body).display,"
 
-            if (headers == null ||
-                    headers.isEmpty()) {
+                        + "opacity:"
+                        + "getComputedStyle(document.body).opacity,"
 
-                debug(
-                        prefix
-                                + " HEADER = <none>"
-                );
+                        + "windowWidth:window.innerWidth,"
 
-                return;
-            }
+                        + "windowHeight:window.innerHeight,"
 
-            for (
-                    java.util.Map.Entry<String, String> entry
-                    : headers.entrySet()
-            ) {
+                        + "screenWidth:screen.width,"
 
-                debug(
-                        prefix
-                                + " HEADER | "
-                                + entry.getKey()
+                        + "screenHeight:screen.height,"
+
+                        + "devicePixelRatio:"
+                        + "window.devicePixelRatio,"
+
+                        + "scrollX:window.scrollX,"
+
+                        + "scrollY:window.scrollY,"
+
+                        + "bodyWidth:b?b.offsetWidth:-1,"
+
+                        + "bodyHeight:b?b.offsetHeight:-1,"
+
+                        + "documentWidth:d?d.offsetWidth:-1,"
+
+                        + "documentHeight:d?d.offsetHeight:-1,"
+
+                        + "elements:"
+                        + "document.getElementsByTagName('*').length,"
+
+                        + "iframes:"
+                        + "document.getElementsByTagName('iframe').length,"
+
+                        + "links:"
+                        + "document.getElementsByTagName('a').length,"
+
+                        + "buttons:"
+                        + "document.getElementsByTagName('button').length,"
+
+                        + "scripts:"
+                        + "document.getElementsByTagName('script').length,"
+
+                        + "images:"
+                        + "document.getElementsByTagName('img').length,"
+
+                        + "triggerExists:"
+                        + "!!t,"
+
+                        + "triggerRect:"
+                        + "(r?JSON.stringify({"
+                        + "x:r.x,"
+                        + "y:r.y,"
+                        + "width:r.width,"
+                        + "height:r.height,"
+                        + "top:r.top,"
+                        + "bottom:r.bottom,"
+                        + "left:r.left,"
+                        + "right:r.right"
+                        + "}):null),"
+
+                        + "bodyText:"
+                        + "(b?b.innerText.substring(0,500):'')"
+
+                        + "});"
+
+                        + "})();";
+
+        webView.evaluateJavascript(
+                js,
+                value -> log(
+                        "🔬 "
+                                + label
                                 + " = "
-                                + entry.getValue()
-                );
-            }
-
-        } catch (Exception e) {
-
-            debug(
-                    prefix
-                            + " HEADER ERROR = "
-                            + e.getClass().getSimpleName()
-                            + " | "
-                            + e.getMessage()
-            );
-        }
+                                + value
+                )
+        );
     }
 
     // ============================================================
-    // REWARD
+    // SIZE
     // ============================================================
 
-    private void scheduleReward() {
+    private void inspectSize(
+            WebView webView,
+            String label
+    ) {
 
-        if (rewardScheduled) {
+        if (webView == null) {
 
-            debug(
-                    "⚠️ reward timer already scheduled"
+            log(
+                    "📐 "
+                            + label
+                            + " | NULL"
             );
 
             return;
         }
 
-        rewardScheduled = true;
+        activity.runOnUiThread(() -> {
 
-        debug(
-                "⏱ Reward timer scheduled: "
-                        + REWARD_DELAY_MS
-                        + " ms"
+            ViewGroup.LayoutParams lp =
+                    webView.getLayoutParams();
+
+            log(
+                    "📐 "
+                            + label
+                            + " | width="
+                            + webView.getWidth()
+                            + " | height="
+                            + webView.getHeight()
+                            + " | x="
+                            + webView.getX()
+                            + " | y="
+                            + webView.getY()
+                            + " | visibility="
+                            + webView.getVisibility()
+                            + " | alpha="
+                            + webView.getAlpha()
+                            + " | lpWidth="
+                            + (
+                            lp != null
+                                    ? lp.width
+                                    : -999
+                    )
+                            + " | lpHeight="
+                            + (
+                            lp != null
+                                    ? lp.height
+                                    : -999
+                    )
+            );
+        });
+    }
+
+    // ============================================================
+    // HOST JS DIAGNOSTICS
+    // ============================================================
+
+    private void installDiagnostics() {
+
+        if (hostWebView == null) {
+            return;
+        }
+
+        String js =
+                "(function(){"
+
+                        + "if(window.__lamoushi_diag){"
+                        + "return 'already';"
+                        + "}"
+
+                        + "window.__lamoushi_diag=true;"
+
+                        + "console.log("
+                        + "'🔬 HOST diagnostics installed'"
+                        + ");"
+
+                        // CLICK
+                        + "document.addEventListener("
+                        + "'click',"
+                        + "function(e){"
+
+                        + "console.log("
+                        + "'🖱 CLICK target='"
+                        + "+(e.target&&e.target.tagName)"
+                        + ");"
+
+                        + "console.log("
+                        + "'🖱 trusted='"
+                        + "+e.isTrusted"
+                        + ");"
+
+                        + "console.log("
+                        + "'🖱 defaultPrevented='"
+                        + "+e.defaultPrevented"
+                        + ");"
+
+                        + "},true);"
+
+                        // TOUCH
+                        + "document.addEventListener("
+                        + "'touchstart',"
+                        + "function(e){"
+                        + "console.log("
+                        + "'👆 JS TOUCHSTART'"
+                        + ");"
+                        + "},true);"
+
+                        + "document.addEventListener("
+                        + "'touchend',"
+                        + "function(e){"
+                        + "console.log("
+                        + "'👆 JS TOUCHEND'"
+                        + ");"
+                        + "},true);"
+
+                        // POINTER
+                        + "document.addEventListener("
+                        + "'pointerdown',"
+                        + "function(e){"
+                        + "console.log("
+                        + "'👉 POINTERDOWN trusted='"
+                        + "+e.isTrusted"
+                        + ");"
+                        + "},true);"
+
+                        + "document.addEventListener("
+                        + "'pointerup',"
+                        + "function(e){"
+                        + "console.log("
+                        + "'👉 POINTERUP trusted='"
+                        + "+e.isTrusted"
+                        + ");"
+                        + "},true);"
+
+                        // SCROLL
+                        + "window.addEventListener("
+                        + "'scroll',"
+                        + "function(){"
+                        + "console.log("
+                        + "'📜 SCROLL x='"
+                        + "+window.scrollX"
+                        + "+' y='"
+                        + "+window.scrollY"
+                        + ");"
+                        + "},true);"
+
+                        // RESIZE
+                        + "window.addEventListener("
+                        + "'resize',"
+                        + "function(){"
+                        + "console.log("
+                        + "'📐 RESIZE '"
+                        + "+window.innerWidth"
+                        + "+'x'"
+                        + "+window.innerHeight"
+                        + ");"
+                        + "},true);"
+
+                        // MUTATION
+                        + "var observer="
+                        + "new MutationObserver("
+                        + "function(list){"
+
+                        + "console.log("
+                        + "'🔄 DOM MUTATION count='"
+                        + "+list.length"
+                        + ");"
+
+                        + "list.forEach(function(m){"
+
+                        + "console.log("
+                        + "'🔄 mutation type='"
+                        + "+m.type"
+                        + "+' added='"
+                        + "+m.addedNodes.length"
+                        + "+' removed='"
+                        + "+m.removedNodes.length"
+                        + ");"
+
+                        + "});"
+
+                        + "});"
+
+                        + "observer.observe("
+                        + "document.documentElement,"
+                        + "{"
+                        + "childList:true,"
+                        + "subtree:true,"
+                        + "attributes:true"
+                        + "}"
+                        + ");"
+
+                        // PERIODIC STATE
+                        + "window.__lamoushi_state=setInterval("
+                        + "function(){"
+
+                        + "var t=document.getElementById('trigger');"
+
+                        + "if(t){"
+
+                        + "var r=t.getBoundingClientRect();"
+
+                        + "console.log("
+                        + "'📦 TRIGGER RECT '"
+                        + "+JSON.stringify({"
+                        + "x:r.x,"
+                        + "y:r.y,"
+                        + "w:r.width,"
+                        + "h:r.height"
+                        + "})"
+                        + ");"
+
+                        + "}"
+
+                        + "},2000);"
+
+                        + "return 'installed';"
+
+                        + "})();";
+
+        hostWebView.evaluateJavascript(
+                js,
+                value -> log(
+                        "🔬 HOST DIAGNOSTICS = "
+                                + value
+                )
         );
+    }
 
-        handler.postDelayed(
-                () -> {
+    // ============================================================
+    // POP JS DIAGNOSTICS
+    // ============================================================
 
-                    if (rewardGranted) {
-                        return;
-                    }
+    private void installPopDiagnostics() {
 
-                    rewardGranted = true;
+        if (popWebView == null) {
+            return;
+        }
 
-                    debug(
-                            "🎁 Reward timer finished"
-                    );
+        String js =
+                "(function(){"
 
-                    emitSignal(
-                            "reward_ready"
-                    );
+                        + "if(window.__lamoushi_pop_diag)"
+                        + "return 'already';"
 
-                },
-                REWARD_DELAY_MS
+                        + "window.__lamoushi_pop_diag=true;"
+
+                        + "console.log("
+                        + "'🔬 POP diagnostics installed'"
+                        + ");"
+
+                        + "document.addEventListener("
+                        + "'click',"
+                        + "function(e){"
+
+                        + "console.log("
+                        + "'🖱 POP CLICK target='"
+                        + "+(e.target&&e.target.tagName)"
+                        + "+' trusted='"
+                        + "+e.isTrusted"
+                        + ");"
+
+                        + "},true);"
+
+                        + "window.addEventListener("
+                        + "'load',"
+                        + "function(){"
+                        + "console.log('🔵 POP WINDOW LOAD');"
+                        + "});"
+
+                        + "return 'installed';"
+
+                        + "})();";
+
+        popWebView.evaluateJavascript(
+                js,
+                value -> log(
+                        "🔬 POP DIAGNOSTICS = "
+                                + value
+                )
         );
     }
 
@@ -1559,14 +1506,14 @@ public class LamoushiRewarded extends GodotPlugin {
 
         activity.runOnUiThread(() -> {
 
-            debug(
-                    "🔴 closeRewardedAd()"
-            );
+            separator();
+
+            log("🛑 CLOSE REWARDED");
+
+            handler.removeCallbacksAndMessages(null);
 
             destroyPop();
             destroyHost();
-
-            rewardScheduled = false;
 
             emitSignal(
                     "reward_ad_closed"
@@ -1580,40 +1527,47 @@ public class LamoushiRewarded extends GodotPlugin {
 
     private void destroyPop() {
 
-        if (popWebView == null) {
-            return;
-        }
+        if (popWebView != null) {
 
-        try {
+            log(
+                    "🗑 DESTROY POP"
+            );
 
-            if (popWebView.getParent() != null) {
+            if (popWebView.getParent()
+                    instanceof ViewGroup) {
 
-                ViewGroup parent =
-                        (ViewGroup)
-                                popWebView.getParent();
-
-                parent.removeView(
-                        popWebView
-                );
+                ((ViewGroup)
+                        popWebView.getParent())
+                        .removeView(
+                                popWebView
+                        );
             }
 
             popWebView.stopLoading();
-            popWebView.loadUrl("about:blank");
+
             popWebView.clearHistory();
-            popWebView.removeAllViews();
+
+            popWebView.clearCache(false);
+
             popWebView.destroy();
 
-        } catch (Exception e) {
-
-            debug(
-                    "⚠️ destroyPop error = "
-                            + e.getClass().getSimpleName()
-                            + " | "
-                            + e.getMessage()
-            );
+            popWebView = null;
         }
 
-        popWebView = null;
+        if (popContainer != null) {
+
+            if (popContainer.getParent()
+                    instanceof ViewGroup) {
+
+                ((ViewGroup)
+                        popContainer.getParent())
+                        .removeView(
+                                popContainer
+                        );
+            }
+
+            popContainer = null;
+        }
     }
 
     // ============================================================
@@ -1622,40 +1576,47 @@ public class LamoushiRewarded extends GodotPlugin {
 
     private void destroyHost() {
 
-        if (hostWebView == null) {
-            return;
-        }
+        if (hostWebView != null) {
 
-        try {
+            log(
+                    "🗑 DESTROY HOST"
+            );
 
-            if (hostWebView.getParent() != null) {
+            if (hostWebView.getParent()
+                    instanceof ViewGroup) {
 
-                ViewGroup parent =
-                        (ViewGroup)
-                                hostWebView.getParent();
-
-                parent.removeView(
-                        hostWebView
-                );
+                ((ViewGroup)
+                        hostWebView.getParent())
+                        .removeView(
+                                hostWebView
+                        );
             }
 
             hostWebView.stopLoading();
-            hostWebView.loadUrl("about:blank");
+
             hostWebView.clearHistory();
-            hostWebView.removeAllViews();
+
+            hostWebView.clearCache(false);
+
             hostWebView.destroy();
 
-        } catch (Exception e) {
-
-            debug(
-                    "⚠️ destroyHost error = "
-                            + e.getClass().getSimpleName()
-                            + " | "
-                            + e.getMessage()
-            );
+            hostWebView = null;
         }
 
-        hostWebView = null;
+        if (hostContainer != null) {
+
+            if (hostContainer.getParent()
+                    instanceof ViewGroup) {
+
+                ((ViewGroup)
+                        hostContainer.getParent())
+                        .removeView(
+                                hostContainer
+                        );
+            }
+
+            hostContainer = null;
+        }
     }
 
     // ============================================================
@@ -1665,18 +1626,12 @@ public class LamoushiRewarded extends GodotPlugin {
     @Override
     public void onMainDestroy() {
 
-        handler.removeCallbacksAndMessages(
-                null
-        );
+        handler.removeCallbacksAndMessages(null);
 
-        if (activity != null) {
+        activity.runOnUiThread(() -> {
 
-            activity.runOnUiThread(() -> {
-
-                destroyPop();
-                destroyHost();
-
-            });
-        }
+            destroyPop();
+            destroyHost();
+        });
     }
 }
