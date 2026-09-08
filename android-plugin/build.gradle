@@ -12,7 +12,7 @@ apply plugin: 'com.android.library'
 apply plugin: 'maven-publish'
 
 android {
-    namespace 'com.lamoushi.ads'
+    namespace 'com.khayal.ads'
     compileSdk 34
 
     defaultConfig {
@@ -25,7 +25,7 @@ android {
     }
 
     base {
-        archivesName = "LamoushiAds"
+        archivesName = "KhayalAds"
     }
 
     publishing {
@@ -52,7 +52,7 @@ afterEvaluate {
             release(MavenPublication) {
                 from components.release
                 groupId = 'com.github.ayssersalhi-a11y'
-                artifactId = 'LamoushiADS'
+                artifactId = 'KhayalADS'
                 version = project.version ?: '1.0.0'
             }
         }
