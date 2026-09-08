@@ -43,12 +43,12 @@ jobs:
         run: |
           mkdir -p plugin-output/android/plugins
 
-          cp android-plugin/build/outputs/aar/LamoushiAds-release.aar \
+          cp android-plugin/build/outputs/aar/KhayalAds-release.aar \
              plugin-output/android/plugins/ads.aar
 
           cat > plugin-output/android/plugins/ads.gdap << 'EOF'
           [config]
-          name="LamoushiAds"
+          name="KhayalAds"
           binary_type="local"
           binary="ads.aar"
 
@@ -61,7 +61,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LamoushiAds_Plugin_Ready
+          name: KhayalAds_Plugin_Ready
           path: plugin-output/
 
       - name: Set version tag
